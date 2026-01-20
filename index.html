@@ -647,17 +647,17 @@
                 z-index: 101;
                 pointer-events: auto;
                 touch-action: manipulation;
+                color: rgba(255, 255, 255, 0.8);
             }
 
             .burger-menu svg {
                 width: 24px;
                 height: 24px;
-                fill: rgba(255, 255, 255, 0.8);
             }
 
-            .burger-menu:hover svg,
-            .burger-menu.active svg {
-                fill: #fff;
+            .burger-menu:hover,
+            .burger-menu.active {
+                color: #fff;
             }
 
             /* Mobile info panel */
@@ -2140,16 +2140,26 @@
                 const touch = e.changedTouches[0];
                 const dx = Math.abs(touch.clientX - touchStartPosition.x);
                 const dy = Math.abs(touch.clientY - touchStartPosition.y);
-                if (dx < 10 && dy < 10 && lockedBubble) {
-                    // Check if tap was on a bubble
-                    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-                    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-                    raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObjects(bubbles);
+                if (dx < 10 && dy < 10) {
+                    // Close mobile info panel if open
+                    const mobilePanel = document.getElementById('mobile-info-panel');
+                    const burger = document.getElementById('burger-menu');
+                    if (mobilePanel.classList.contains('visible')) {
+                        mobilePanel.classList.remove('visible');
+                        burger.classList.remove('active');
+                    }
 
-                    if (intersects.length === 0) {
-                        lockedBubble = null;
-                        hideInfoPanel();
+                    // Check if tap was on a bubble to deselect
+                    if (lockedBubble) {
+                        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                        raycaster.setFromCamera(mouse, camera);
+                        const intersects = raycaster.intersectObjects(bubbles);
+
+                        if (intersects.length === 0) {
+                            lockedBubble = null;
+                            hideInfoPanel();
+                        }
                     }
                 }
             }
