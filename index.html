@@ -373,7 +373,7 @@
             cursor: pointer;
             transition: all 0.2s ease;
             opacity: 0.7;
-            color: white;
+            color: #000;
             font-weight: 500;
         }
 
@@ -1109,6 +1109,7 @@
             label.position.set(0, -0.1, 0);
             bubble.add(label);
             bubble.userData.label = label;
+            bubble.userData.labelLocalPos = { x: 0, y: -0.1, z: 0 };
 
             // Add status label (current position below bubble)
             const statusLabel = createTextSprite(data.spectrum.inner, categoryInfo.color);
@@ -1116,6 +1117,7 @@
             statusLabel.scale.set(4, 0.5, 1); // Slightly smaller than name label
             bubble.add(statusLabel);
             bubble.userData.statusLabel = statusLabel;
+            bubble.userData.statusLabelLocalPos = { x: 0, y: 0.75, z: 0 };
 
             scene.add(bubble);
             bubbles.push(bubble);
@@ -1643,12 +1645,14 @@
                 const time = Date.now() * 0.001;
                 bubble.position.z = Math.sin(time + index) * 0.1;
 
-                // Make labels face camera
+                // Make labels face camera and keep in fixed position
                 if (bubble.userData.label) {
                     bubble.userData.label.quaternion.copy(camera.quaternion);
+                    bubble.userData.label.position.copy(bubble.userData.labelLocalPos);
                 }
                 if (bubble.userData.statusLabel) {
                     bubble.userData.statusLabel.quaternion.copy(camera.quaternion);
+                    bubble.userData.statusLabel.position.copy(bubble.userData.statusLabelLocalPos);
                 }
             });
 
