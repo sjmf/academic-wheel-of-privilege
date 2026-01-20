@@ -147,6 +147,16 @@
             text-align: center;
             font-size: 0.75rem;
             font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #info-panel .spectrum-item:hover {
+            transform: scale(1.05);
+        }
+
+        #info-panel .spectrum-item.selected {
+            box-shadow: 0 0 0 2px white;
         }
 
         #info-panel .spectrum-item.outer {
@@ -185,6 +195,50 @@
             font-size: 0.9rem;
             color: rgba(255, 255, 255, 0.6);
             line-height: 1.5;
+        }
+
+        #score-panel {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 16px 32px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+            text-align: center;
+        }
+
+        #score-panel .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #score-panel .score-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 4px;
+        }
+
+        #score-panel .score-bar {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        #score-panel .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444, #eab308, #22c55e);
+            border-radius: 3px;
+            transition: width 0.3s ease;
         }
 
         #legend {
@@ -279,9 +333,19 @@
             font-weight: 500;
         }
 
-        .category-btn:hover, .category-btn.active {
-            opacity: 1;
+        .category-btn:hover {
+            opacity: 0.9;
             transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        .category-btn.active {
+            opacity: 1;
+        }
+
+        .category-btn:hover.active {
+            transform: scale(1.05);
+            filter: brightness(1.1);
         }
 
         /* Mobile Responsive Styles */
@@ -304,6 +368,16 @@
             #header p {
                 font-size: 0.75rem;
                 line-height: 1.4;
+            }
+
+            #score-panel {
+                top: auto;
+                bottom: 70px;
+                padding: 12px 24px;
+            }
+
+            #score-panel .score-value {
+                font-size: 2rem;
             }
 
             .category-filter {
@@ -416,30 +490,35 @@
     <div id="header">
         <h1>Academic Wheel of Privilege</h1>
         <p>An interactive visualization exploring 20 identity types across 7 categories, showing how privilege intersects in academia.</p>
+        <p>Click & drag bubbles and select positions on each spectrum.</p>
+    </div>
+
+    <div id="score-panel">
+        <div class="score-value" id="score-value">60</div>
+        <div class="score-label">Privilege Score (out of 60)</div>
+        <div class="score-bar">
+            <div class="score-fill" id="score-fill" style="width: 100%"></div>
+        </div>
     </div>
 
     <div class="category-filter" id="category-filter"></div>
 
     <div id="info-panel">
-        <h2 id="panel-title">Hover over a bubble</h2>
+        <h2 id="panel-title">Select a bubble</h2>
         <div class="category-badge" id="panel-category"></div>
-        <div class="privilege-level" id="panel-privilege">
-            <div class="dot"></div>
-            <span></span>
-        </div>
         <p class="description" id="panel-description"></p>
         <div class="uk-law" id="panel-uk-law">
             <h3><span id="uk-law-icon"></span> <span id="uk-law-title"></span></h3>
             <p id="uk-law-text"></p>
         </div>
         <div class="spectrum" id="panel-spectrum">
-            <h3>Privilege Spectrum</h3>
+            <h3>Select your position (click to change ring)</h3>
             <div class="spectrum-items" id="spectrum-items"></div>
         </div>
     </div>
 
     <div id="legend">
-        <h3>Privilege Level (Points)</h3>
+        <h3>Privilege Level (drag bubbles between rings)</h3>
         <div class="legend-items">
             <div class="legend-item">
                 <div class="legend-dot inner"></div>
@@ -457,7 +536,7 @@
     </div>
 
     <div id="instructions">
-        Click and drag to rotate | Scroll to zoom | Hover over bubbles for details
+        Drag bubbles between rings to set privilege | Click for details | Scroll to zoom
     </div>
 
     <div id="citation">
@@ -716,6 +795,10 @@
             "Childhood and Development": { color: "#fbbf24", angle: 308.4 }
         };
 
+        // Ring radii - inner is most privileged (1.5 unit spacing)
+        const ringRadii = { inner: 4.0, middle: 5.5, outer: 7.0 };
+        const ringPoints = { inner: 3, middle: 2, outer: 1 };
+
         // Scene setup
         const container = document.getElementById('container');
         const scene = new THREE.Scene();
@@ -728,8 +811,6 @@
         // Function to calculate optimal camera distance based on screen size
         function getOptimalCameraZ() {
             const width = window.innerWidth;
-            const height = window.innerHeight;
-            const minDimension = Math.min(width, height);
 
             // On mobile/small screens, zoom out more to fit the wheel
             if (width <= 480) {
@@ -750,6 +831,12 @@
         // Store bubble meshes
         const bubbles = [];
         let hoveredBubble = null;
+        let lockedBubble = null;
+        let isDragging = false;
+        let isDraggingBubble = false;
+        let draggedBubble = null;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationVelocity = { x: 0, y: 0 };
 
         // Create central sphere
         const centerGeometry = new THREE.SphereGeometry(2, 64, 64);
@@ -763,53 +850,93 @@
         scene.add(centerSphere);
 
         // Create concentric rings
-        const ringRadii = [4.5, 6.5, 8.5]; // inner, middle, outer
-        const ringColors = [0x22c55e, 0xeab308, 0xef4444];
-
-        ringRadii.forEach((radius, index) => {
-            const ringGeometry = new THREE.TorusGeometry(radius, 0.03, 16, 100);
+        const ringColors = { inner: 0x22c55e, middle: 0xeab308, outer: 0xef4444 };
+        Object.entries(ringRadii).forEach(([name, radius]) => {
+            const ringGeometry = new THREE.TorusGeometry(radius, 0.05, 16, 100);
             const ringMaterial = new THREE.MeshBasicMaterial({
-                color: ringColors[index],
+                color: ringColors[name],
                 transparent: true,
-                opacity: 0.4
+                opacity: 0.5
             });
             const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-            // No rotation needed - rings are now in XY plane facing camera
+            ring.userData.ringName = name;
             scene.add(ring);
         });
 
-        // Create bubbles for each identity
+        // Create text sprite
+        function createTextSprite(text, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+
+            context.fillStyle = 'transparent';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            context.font = 'bold 24px Segoe UI, sans-serif';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+
+            // Text shadow for readability
+            context.fillStyle = 'rgba(0,0,0,0.8)';
+            context.fillText(text, canvas.width / 2 + 1, canvas.height / 2 + 1);
+
+            context.fillStyle = '#ffffff';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(2, 0.5, 1);
+            sprite.renderOrder = 999;
+
+            return sprite;
+        }
+
+        // Create bubble with label
         function createBubble(name, data, positionIndex, totalInCategory) {
             const categoryInfo = categories[data.category];
             const baseAngle = (categoryInfo.angle * Math.PI) / 180;
             const angleSpread = (360 / 7) * Math.PI / 180;
             const angle = baseAngle + (positionIndex - (totalInCategory - 1) / 2) * (angleSpread / Math.max(totalInCategory, 1) * 0.8);
 
-            // Determine which ring based on privilege level (we'll place at middle ring initially)
-            // The visualization shows all three levels for each identity
-            const radius = 6.5; // middle ring
-
-            // Position in XY plane (facing camera) instead of XZ plane
+            // All bubbles start on inner ring (most privileged)
+            const radius = ringRadii.inner;
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius;
-            const z = (Math.random() - 0.5) * 0.3; // slight depth variation
 
-            const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const geometry = new THREE.SphereGeometry(0.45, 32, 32);
             const material = new THREE.MeshPhongMaterial({
                 color: new THREE.Color(categoryInfo.color),
                 transparent: true,
-                opacity: 0.85,
+                opacity: 0.9,
                 shininess: 100,
                 emissive: new THREE.Color(categoryInfo.color),
-                emissiveIntensity: 0.1
+                emissiveIntensity: 0.15
             });
 
             const bubble = new THREE.Mesh(geometry, material);
-            bubble.position.set(x, y, z);
-            bubble.userData = { name, ...data, targetScale: 1, currentScale: 1 };
+            bubble.position.set(x, y, 0);
+            bubble.userData = {
+                name,
+                ...data,
+                angle,
+                currentRing: 'inner',
+                points: 3,
+                targetScale: 1,
+                targetPosition: { x, y, z: 0 }
+            };
 
-            // Add glow effect
-            const glowGeometry = new THREE.SphereGeometry(0.55, 32, 32);
+            // Add glow
+            const glowGeometry = new THREE.SphereGeometry(0.5, 32, 32);
             const glowMaterial = new THREE.MeshBasicMaterial({
                 color: new THREE.Color(categoryInfo.color),
                 transparent: true,
@@ -819,27 +946,19 @@
             bubble.add(glow);
             bubble.userData.glow = glow;
 
+            // Add text label
+            const label = createTextSprite(name, categoryInfo.color);
+            label.position.set(0, 0.8, 0);
+            bubble.add(label);
+            bubble.userData.label = label;
+
             scene.add(bubble);
             bubbles.push(bubble);
-
-            // Create connecting line to center
-            const points = [
-                new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(x * 0.3, y * 0.3, 0)
-            ];
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-            const lineMaterial = new THREE.LineBasicMaterial({
-                color: categoryInfo.color,
-                transparent: true,
-                opacity: 0.3
-            });
-            const line = new THREE.Line(lineGeometry, lineMaterial);
-            scene.add(line);
 
             return bubble;
         }
 
-        // Group identities by category
+        // Group and create bubbles
         const identitiesByCategory = {};
         Object.entries(identityData).forEach(([name, data]) => {
             if (!identitiesByCategory[data.category]) {
@@ -848,7 +967,6 @@
             identitiesByCategory[data.category].push({ name, data });
         });
 
-        // Create bubbles
         Object.entries(identitiesByCategory).forEach(([category, identities]) => {
             identities.forEach((identity, index) => {
                 createBubble(identity.name, identity.data, index, identities.length);
@@ -862,7 +980,6 @@
             btn.className = 'category-btn active';
             btn.style.backgroundColor = info.color;
             btn.textContent = name;
-            btn.dataset.category = name;
             btn.addEventListener('click', () => {
                 btn.classList.toggle('active');
                 const isActive = btn.classList.contains('active');
@@ -876,80 +993,42 @@
         });
 
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
-
-        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-        pointLight.position.set(10, 10, 10);
+        const pointLight = new THREE.PointLight(0xffffff, 0.8, 100);
+        pointLight.position.set(10, 10, 15);
         scene.add(pointLight);
-
-        const pointLight2 = new THREE.PointLight(0x60a5fa, 0.5, 100);
+        const pointLight2 = new THREE.PointLight(0x60a5fa, 0.4, 100);
         pointLight2.position.set(-10, -10, 10);
         scene.add(pointLight2);
 
-        // Mouse controls
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let rotationVelocity = { x: 0, y: 0 };
-        let lockedBubble = null; // Track clicked/locked bubble
+        // Calculate and update score
+        function updateScore() {
+            let total = 0;
+            bubbles.forEach(b => {
+                total += b.userData.points;
+            });
+            const maxScore = bubbles.length * 3;
+            document.getElementById('score-value').textContent = total;
+            document.getElementById('score-fill').style.width = (total / maxScore * 100) + '%';
+        }
 
-        container.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        container.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        container.addEventListener('mouseleave', () => {
-            isDragging = false;
-        });
-
-        // Click to lock/unlock bubble
-        container.addEventListener('click', (e) => {
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(bubbles);
-
-            if (intersects.length > 0) {
-                const clickedBubble = intersects[0].object;
-                if (lockedBubble === clickedBubble) {
-                    // Clicking same bubble unlocks it
-                    lockedBubble = null;
-                } else {
-                    // Lock to this bubble
-                    lockedBubble = clickedBubble;
-                    updateInfoPanel(clickedBubble);
-                }
-            } else {
-                // Clicking background unlocks
-                lockedBubble = null;
-                hideInfoPanel();
+        // Move bubble to ring
+        function moveBubbleToRing(bubble, ringName) {
+            const radius = ringRadii[ringName];
+            const angle = bubble.userData.angle;
+            bubble.userData.currentRing = ringName;
+            bubble.userData.points = ringPoints[ringName];
+            bubble.userData.targetPosition = {
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius,
+                z: 0
+            };
+            updateScore();
+            if (lockedBubble === bubble) {
+                updateInfoPanel(bubble);
             }
-        });
-
-        container.addEventListener('mousemove', (e) => {
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-            if (isDragging) {
-                const deltaMove = {
-                    x: e.clientX - previousMousePosition.x,
-                    y: e.clientY - previousMousePosition.y
-                };
-
-                rotationVelocity.x = deltaMove.y * 0.005;
-                rotationVelocity.y = deltaMove.x * 0.005;
-
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            }
-        });
-
-        // Zoom with scroll
-        container.addEventListener('wheel', (e) => {
-            camera.position.z += e.deltaY * 0.01;
-            camera.position.z = Math.max(8, Math.min(30, camera.position.z));
-        });
+        }
 
         // Update info panel
         function updateInfoPanel(bubble) {
@@ -957,42 +1036,41 @@
             const data = bubble.userData;
 
             document.getElementById('panel-title').textContent = data.name;
-
             const categoryBadge = document.getElementById('panel-category');
             categoryBadge.textContent = data.category;
             categoryBadge.style.backgroundColor = data.categoryColor;
-
             document.getElementById('panel-description').textContent = data.description;
 
-            // UK Law section
             const ukLawDiv = document.getElementById('panel-uk-law');
             ukLawDiv.className = `uk-law ${data.ukLaw.status}`;
-
-            const icons = {
-                'protected': '✓',
-                'partial': '◐',
-                'not-protected': '✗'
-            };
+            const icons = { 'protected': '✓', 'partial': '◐', 'not-protected': '✗' };
             document.getElementById('uk-law-icon').textContent = icons[data.ukLaw.status];
             document.getElementById('uk-law-title').textContent = data.ukLaw.title;
             document.getElementById('uk-law-text').textContent = data.ukLaw.text;
 
-            // Spectrum section
             const spectrumItems = document.getElementById('spectrum-items');
             spectrumItems.innerHTML = `
-                <div class="spectrum-item outer">
+                <div class="spectrum-item outer ${data.currentRing === 'outer' ? 'selected' : ''}" data-ring="outer">
                     <div style="font-weight: 600; margin-bottom: 4px;">1 point</div>
                     ${data.spectrum.outer}
                 </div>
-                <div class="spectrum-item middle">
+                <div class="spectrum-item middle ${data.currentRing === 'middle' ? 'selected' : ''}" data-ring="middle">
                     <div style="font-weight: 600; margin-bottom: 4px;">2 points</div>
                     ${data.spectrum.middle}
                 </div>
-                <div class="spectrum-item inner">
+                <div class="spectrum-item inner ${data.currentRing === 'inner' ? 'selected' : ''}" data-ring="inner">
                     <div style="font-weight: 600; margin-bottom: 4px;">3 points</div>
                     ${data.spectrum.inner}
                 </div>
             `;
+
+            // Add click handlers to spectrum items
+            spectrumItems.querySelectorAll('.spectrum-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const ring = item.dataset.ring;
+                    moveBubbleToRing(bubble, ring);
+                });
+            });
 
             panel.classList.add('visible');
         }
@@ -1001,81 +1079,177 @@
             document.getElementById('info-panel').classList.remove('visible');
         }
 
+        // Mouse events
+        container.addEventListener('mousedown', (e) => {
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bubbles);
+
+            if (intersects.length > 0) {
+                isDraggingBubble = true;
+                draggedBubble = intersects[0].object;
+                draggedBubble.userData.targetScale = 1.3;
+            } else {
+                isDragging = true;
+            }
+        });
+
+        container.addEventListener('mouseup', (e) => {
+            if (isDraggingBubble && draggedBubble) {
+                // Determine which ring to snap to based on distance from center
+                const pos = draggedBubble.position;
+                const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+
+                let targetRing = 'inner';
+                if (dist > (ringRadii.inner + ringRadii.middle) / 2) {
+                    if (dist > (ringRadii.middle + ringRadii.outer) / 2) {
+                        targetRing = 'outer';
+                    } else {
+                        targetRing = 'middle';
+                    }
+                }
+
+                moveBubbleToRing(draggedBubble, targetRing);
+                draggedBubble.userData.targetScale = 1;
+                draggedBubble = null;
+            }
+            isDragging = false;
+            isDraggingBubble = false;
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            if (isDraggingBubble && draggedBubble) {
+                // Convert mouse to 3D position on XY plane
+                const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+                vector.unproject(camera);
+                const dir = vector.sub(camera.position).normalize();
+                const distance = -camera.position.z / dir.z;
+                const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+
+                // Keep bubble at its angle, just change radius
+                const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+                const clampedDist = Math.max(ringRadii.inner - 1, Math.min(ringRadii.outer + 1, currentDist));
+                const angle = draggedBubble.userData.angle;
+
+                draggedBubble.position.x = Math.cos(angle) * clampedDist;
+                draggedBubble.position.y = Math.sin(angle) * clampedDist;
+            } else if (isDragging) {
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+                rotationVelocity.x = deltaMove.y * 0.005;
+                rotationVelocity.y = deltaMove.x * 0.005;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        container.addEventListener('click', (e) => {
+            if (isDraggingBubble) return; // Don't trigger click after drag
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bubbles);
+
+            if (intersects.length > 0) {
+                const clickedBubble = intersects[0].object;
+                if (lockedBubble === clickedBubble) {
+                    lockedBubble = null;
+                    hideInfoPanel();
+                } else {
+                    lockedBubble = clickedBubble;
+                    updateInfoPanel(clickedBubble);
+                }
+            } else {
+                lockedBubble = null;
+                hideInfoPanel();
+            }
+        });
+
+        container.addEventListener('wheel', (e) => {
+            camera.position.z += e.deltaY * 0.01;
+            camera.position.z = Math.max(8, Math.min(30, camera.position.z));
+        });
+
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
 
-            // Apply rotation with momentum
-            // Horizontal drag spins the wheel (Z axis), vertical drag tilts it (X axis)
+
+            
+            // Rotation
             scene.rotation.z -= rotationVelocity.y;
             scene.rotation.x += rotationVelocity.x;
-
-            // Damping
             rotationVelocity.x *= 0.95;
             rotationVelocity.y *= 0.95;
 
-            // Auto-rotate slowly when not dragging, not hovering, and not locked (spin around Z axis)
-            if (!isDragging && !hoveredBubble && !lockedBubble && Math.abs(rotationVelocity.x) < 0.001 && Math.abs(rotationVelocity.y) < 0.001) {
-                scene.rotation.z += 0.001;
+            if (!isDragging && !isDraggingBubble && !hoveredBubble && !lockedBubble &&
+                Math.abs(rotationVelocity.x) < 0.001 && Math.abs(rotationVelocity.y) < 0.001) {
+                scene.rotation.z += 0.0005;
             }
 
-            // Raycasting for hover
+            // Hover detection
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(bubbles);
 
             // Reset all bubbles (but keep locked bubble highlighted)
             bubbles.forEach(bubble => {
                 if (bubble === lockedBubble) {
-                    bubble.userData.targetScale = 1.4;
-                    if (bubble.userData.glow) {
-                        bubble.userData.glow.material.opacity = 0.5;
-                    }
+                    bubble.userData.targetScale = 1.3;
+                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = 0.4;
+                } else if (bubble === draggedBubble) {
+                    // Keep drag scale
                 } else {
                     bubble.userData.targetScale = 1;
-                    if (bubble.userData.glow) {
-                        bubble.userData.glow.material.opacity = 0.2;
-                    }
+                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = 0.2;
                 }
             });
 
             // Only update hover state if not locked
-            if (!lockedBubble) {
+            if (!lockedBubble && !isDraggingBubble) {
                 if (intersects.length > 0) {
                     const bubble = intersects[0].object;
-                    bubble.userData.targetScale = 1.4;
-                    if (bubble.userData.glow) {
-                        bubble.userData.glow.material.opacity = 0.5;
-                    }
-
+                    bubble.userData.targetScale = 1.2;
+                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = 0.4;
                     if (hoveredBubble !== bubble) {
                         hoveredBubble = bubble;
-                        updateInfoPanel(bubble);
                     }
                     document.body.style.cursor = 'pointer';
                 } else {
-                    if (hoveredBubble !== null) {
-                        hoveredBubble = null;
-                        hideInfoPanel();
-                    }
+                    hoveredBubble = null;
                     document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
                 }
             } else {
-                // When locked, still show pointer on bubbles
                 document.body.style.cursor = intersects.length > 0 ? 'pointer' : (isDragging ? 'grabbing' : 'grab');
             }
 
-            // Animate bubble scales
-            bubbles.forEach(bubble => {
+            // Animate bubbles
+            bubbles.forEach((bubble, index) => {
+                // Scale animation
                 const currentScale = bubble.scale.x;
                 const targetScale = bubble.userData.targetScale;
                 const newScale = currentScale + (targetScale - currentScale) * 0.1;
                 bubble.scale.set(newScale, newScale, newScale);
-            });
 
-            // Subtle floating animation (depth wobble)
-            bubbles.forEach((bubble, index) => {
+                // Position animation (snap to ring)
+                if (!isDraggingBubble || bubble !== draggedBubble) {
+                    const target = bubble.userData.targetPosition;
+                    bubble.position.x += (target.x - bubble.position.x) * 0.1;
+                    bubble.position.y += (target.y - bubble.position.y) * 0.1;
+                    bubble.position.z += (target.z - bubble.position.z) * 0.1;
+                }
+
+                // Subtle floating
                 const time = Date.now() * 0.001;
-                bubble.position.z = (Math.sin(time + index) * 0.15);
+                bubble.position.z = Math.sin(time + index) * 0.1;
+
+                // Make label face camera
+                if (bubble.userData.label) {
+                    bubble.userData.label.quaternion.copy(camera.quaternion);
+                }
             });
 
             renderer.render(scene, camera);
@@ -1089,7 +1263,8 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Start animation
+        // Initialize
+        updateScore();
         animate();
     </script>
 </body>
