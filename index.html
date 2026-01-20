@@ -469,7 +469,7 @@
             }
 
             #header h1 {
-                font-size: 1.4rem;
+                font-size: 1.6rem;
                 margin-bottom: 4px;
             }
 
@@ -487,6 +487,22 @@
                 font-size: 1.8rem;
             }
 
+            /* Attribution above category bar on mobile */
+            #citation {
+                display: block;
+                position: fixed;
+                bottom: 70px;
+                left: 12px;
+                right: 12px;
+                max-width: none;
+                text-align: center;
+                font-size: 0.6rem;
+                background: rgba(15, 23, 42, 0.9);
+                padding: 8px 12px;
+                border-radius: 8px;
+                z-index: 99;
+            }
+
             .category-filter {
                 position: fixed;
                 top: auto;
@@ -494,20 +510,28 @@
                 left: 0;
                 right: 0;
                 flex-direction: row;
-                gap: 6px;
-                padding: 12px;
+                gap: 8px;
+                padding: 12px 16px;
                 background: rgba(15, 23, 42, 0.95);
                 border-top: 1px solid rgba(255, 255, 255, 0.1);
                 overflow-x: auto;
                 justify-content: flex-start;
                 -webkit-overflow-scrolling: touch;
+                z-index: 100;
+                /* Ensure touch events work */
+                pointer-events: auto;
             }
 
             .category-btn {
-                padding: 6px 12px;
-                font-size: 0.7rem;
+                padding: 10px 16px;
+                font-size: 0.75rem;
                 white-space: nowrap;
                 flex-shrink: 0;
+                min-height: 44px;
+                min-width: 44px;
+                /* Ensure touch events work */
+                pointer-events: auto;
+                touch-action: manipulation;
             }
 
             .category-btn:hover, .category-btn.active {
@@ -515,12 +539,16 @@
             }
 
             .reset-btn {
-                padding: 6px 12px;
-                font-size: 0.7rem;
+                padding: 10px 16px;
+                font-size: 0.75rem;
                 white-space: nowrap;
                 flex-shrink: 0;
                 margin-top: 0;
-                margin-left: 6px;
+                margin-left: 8px;
+                min-height: 44px;
+                min-width: 44px;
+                pointer-events: auto;
+                touch-action: manipulation;
             }
 
             .reset-btn:hover {
@@ -538,6 +566,22 @@
                 border-radius: 16px 16px 0 0;
                 transform: translateY(100%);
                 padding: 20px;
+                /* Scroll indicator - gradient fade at bottom */
+                -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
+                mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
+            }
+
+            #info-panel::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 40px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
+                margin-bottom: 8px;
             }
 
             #info-panel.visible {
@@ -569,19 +613,20 @@
                 display: none;
             }
 
-            #citation {
+            #instructions {
                 display: none;
             }
 
-            #instructions {
-                display: none;
+            /* Ensure container doesn't block category bar touch events */
+            #container {
+                pointer-events: auto;
             }
         }
 
         /* Very small screens */
         @media (max-width: 400px) {
             #header h1 {
-                font-size: 1.2rem;
+                font-size: 1.4rem;
             }
 
             #header p {
@@ -589,8 +634,15 @@
             }
 
             .category-btn {
-                padding: 5px 10px;
-                font-size: 0.65rem;
+                padding: 8px 14px;
+                font-size: 0.7rem;
+                min-height: 40px;
+            }
+
+            .reset-btn {
+                padding: 8px 14px;
+                font-size: 0.7rem;
+                min-height: 40px;
             }
 
             #info-panel {
@@ -600,6 +652,11 @@
 
             #info-panel h2 {
                 font-size: 1.1rem;
+            }
+
+            #citation {
+                font-size: 0.55rem;
+                padding: 6px 10px;
             }
         }
     </style>
@@ -744,7 +801,12 @@
             AUTO_ROTATE_AMOUNT: 0.0005,
 
             // Projection Z used when converting mouse to world coordinates
-            PROJECTION_Z: 0.5
+            PROJECTION_Z: 0.5,
+
+            // Mobile-specific settings
+            MOBILE_PANEL_OFFSET_Y: 3,  // How much to move wheel up when panel opens
+            TOUCH_ZOOM_SENSITIVITY: 0.03,
+            TOUCH_ROTATION_SENSITIVITY: 0.008
         };
 
         // Data for all 20 identity types
@@ -1511,10 +1573,19 @@
             document.getElementById('nav-counter').textContent = `${currentIndex + 1} / ${bubbles.length}`;
 
             panel.classList.add('visible');
+
+            // Move wheel up on mobile so it's not hidden by panel
+            if (window.innerWidth <= 768) {
+                scene.position.y = CFG.MOBILE_PANEL_OFFSET_Y;
+            }
         }
 
         function hideInfoPanel() {
             document.getElementById('info-panel').classList.remove('visible');
+            // Reset camera position on mobile when panel hides
+            if (window.innerWidth <= 768) {
+                scene.position.y = 0;
+            }
         }
 
         // Navigation button handlers
@@ -1647,6 +1718,176 @@
         container.addEventListener('wheel', (e) => {
             camera.position.z += e.deltaY * CFG.ZOOM_SENSITIVITY;
             camera.position.z = Math.max(CFG.CAMERA_Z_MIN, Math.min(CFG.CAMERA_Z_MAX, camera.position.z));
+        });
+
+        // Touch event handlers for mobile
+        let touchStartDistance = 0;
+        let touchStartPosition = { x: 0, y: 0 };
+        let isTouchDragging = false;
+        let isTouchDraggingBubble = false;
+        let touchDraggedBubble = null;
+        let touchDragRadiusOffset = 0;
+
+        function getTouchDistance(touches) {
+            if (touches.length < 2) return 0;
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function getTouchCenter(touches) {
+            if (touches.length < 2) {
+                return { x: touches[0].clientX, y: touches[0].clientY };
+            }
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+
+        container.addEventListener('touchstart', (e) => {
+            // Don't prevent default for elements that need it (category buttons etc)
+            if (e.target !== renderer.domElement) return;
+
+            e.preventDefault();
+
+            const touch = e.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+            touchStartPosition = { x: touch.clientX, y: touch.clientY };
+
+            if (e.touches.length === 2) {
+                // Pinch zoom start
+                touchStartDistance = getTouchDistance(e.touches);
+            } else {
+                // Single finger - check for bubble drag or rotation
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(bubbles);
+
+                if (intersects.length > 0) {
+                    isTouchDraggingBubble = true;
+                    touchDraggedBubble = intersects[0].object;
+                    touchDraggedBubble.userData.targetScale = CFG.DRAG_SCALE;
+
+                    // Calculate offset
+                    const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
+                    vector.unproject(camera);
+                    const dir = vector.sub(camera.position).normalize();
+                    const distance = -camera.position.z / dir.z;
+                    const clickPos = camera.position.clone().add(dir.multiplyScalar(distance));
+                    const clickRadius = Math.sqrt(clickPos.x * clickPos.x + clickPos.y * clickPos.y);
+                    const bubbleRadius = Math.sqrt(touchDraggedBubble.position.x * touchDraggedBubble.position.x + touchDraggedBubble.position.y * touchDraggedBubble.position.y);
+                    touchDragRadiusOffset = bubbleRadius - clickRadius;
+                } else {
+                    isTouchDragging = true;
+                }
+            }
+        }, { passive: false });
+
+        container.addEventListener('touchmove', (e) => {
+            if (e.target !== renderer.domElement) return;
+            e.preventDefault();
+
+            if (e.touches.length === 2) {
+                // Pinch zoom
+                const newDistance = getTouchDistance(e.touches);
+                if (touchStartDistance > 0) {
+                    const delta = touchStartDistance - newDistance;
+                    camera.position.z += delta * CFG.TOUCH_ZOOM_SENSITIVITY;
+                    camera.position.z = Math.max(CFG.CAMERA_Z_MIN, Math.min(CFG.CAMERA_Z_MAX, camera.position.z));
+                }
+                touchStartDistance = newDistance;
+            } else if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+                if (isTouchDraggingBubble && touchDraggedBubble) {
+                    // Drag bubble between rings
+                    const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
+                    vector.unproject(camera);
+                    const dir = vector.sub(camera.position).normalize();
+                    const distance = -camera.position.z / dir.z;
+                    const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+
+                    const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + touchDragRadiusOffset;
+                    const clampedDist = Math.max(ringRadii.inner - CFG.RING_PADDING, Math.min(ringRadii.outer + CFG.RING_PADDING, currentDist));
+                    const angle = touchDraggedBubble.userData.angle;
+
+                    touchDraggedBubble.position.x = Math.cos(angle) * clampedDist;
+                    touchDraggedBubble.position.y = Math.sin(angle) * clampedDist;
+                } else if (isTouchDragging) {
+                    // Rotate wheel
+                    const deltaMove = {
+                        x: touch.clientX - touchStartPosition.x,
+                        y: touch.clientY - touchStartPosition.y
+                    };
+                    rotationVelocity.x = deltaMove.y * CFG.TOUCH_ROTATION_SENSITIVITY;
+                    rotationVelocity.y = deltaMove.x * CFG.TOUCH_ROTATION_SENSITIVITY;
+                    touchStartPosition = { x: touch.clientX, y: touch.clientY };
+                }
+            }
+        }, { passive: false });
+
+        container.addEventListener('touchend', (e) => {
+            if (isTouchDraggingBubble && touchDraggedBubble) {
+                // Snap bubble to nearest ring
+                const pos = touchDraggedBubble.position;
+                const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+
+                let targetRing = 'inner';
+                if (dist > (ringRadii.inner + ringRadii.middle) / 2) {
+                    if (dist > (ringRadii.middle + ringRadii.outer) / 2) {
+                        targetRing = 'outer';
+                    } else {
+                        targetRing = 'middle';
+                    }
+                }
+
+                moveBubbleToRing(touchDraggedBubble, targetRing);
+                touchDraggedBubble.userData.targetScale = CFG.DEFAULT_SCALE;
+
+                // If it was a tap (not much movement), select the bubble
+                if (e.changedTouches.length > 0) {
+                    const touch = e.changedTouches[0];
+                    const dx = Math.abs(touch.clientX - touchStartPosition.x);
+                    const dy = Math.abs(touch.clientY - touchStartPosition.y);
+                    if (dx < 10 && dy < 10) {
+                        // It was a tap
+                        if (lockedBubble === touchDraggedBubble) {
+                            lockedBubble = null;
+                            hideInfoPanel();
+                        } else {
+                            lockedBubble = touchDraggedBubble;
+                            updateInfoPanel(touchDraggedBubble);
+                        }
+                    }
+                }
+
+                touchDraggedBubble = null;
+            } else if (isTouchDragging && e.changedTouches.length > 0) {
+                // Check if it was a tap to deselect
+                const touch = e.changedTouches[0];
+                const dx = Math.abs(touch.clientX - touchStartPosition.x);
+                const dy = Math.abs(touch.clientY - touchStartPosition.y);
+                if (dx < 10 && dy < 10 && lockedBubble) {
+                    // Check if tap was on a bubble
+                    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(bubbles);
+
+                    if (intersects.length === 0) {
+                        lockedBubble = null;
+                        hideInfoPanel();
+                    }
+                }
+            }
+
+            isTouchDragging = false;
+            isTouchDraggingBubble = false;
+            touchStartDistance = 0;
         });
 
         // Animation loop
