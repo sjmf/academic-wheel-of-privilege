@@ -392,6 +392,25 @@
             filter: brightness(1.1);
         }
 
+        .reset-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.05);
+            margin-top: 12px;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transform: scale(1.05);
+        }
+
         .category-tooltip {
             position: fixed;
             background: rgba(15, 23, 42, 0.95);
@@ -484,6 +503,19 @@
             }
 
             .category-btn:hover, .category-btn.active {
+                transform: none;
+            }
+
+            .reset-btn {
+                padding: 6px 12px;
+                font-size: 0.7rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+                margin-top: 0;
+                margin-left: 6px;
+            }
+
+            .reset-btn:hover {
                 transform: none;
             }
 
@@ -1168,6 +1200,45 @@
             btn.addEventListener('mouseleave', hideCategoryTooltip);
 
             filterContainer.appendChild(btn);
+        });
+
+        // Create reset button after category buttons
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'reset-btn';
+        resetBtn.id = 'reset-btn';
+        resetBtn.textContent = 'Reset All';
+        filterContainer.appendChild(resetBtn);
+
+        // Reset button handler
+        resetBtn.addEventListener('click', () => {
+            // Reset all bubbles to inner ring
+            bubbles.forEach(bubble => {
+                moveBubbleToRing(bubble, 'inner');
+            });
+            
+            // Activate all categories
+            Object.entries(categories).forEach(([name, _]) => {
+                const btn = categoryButtons[name];
+                if (!btn.classList.contains('active')) {
+                    btn.classList.add('active');
+                }
+                // Update all bubbles in this category
+                bubbles.forEach(bubble => {
+                    if (bubble.userData.category === name) {
+                        bubble.userData.isDeselected = false;
+                        bubble.userData.targetOpacity = 0.9;
+                        bubble.userData.targetScale = 1;
+                    }
+                });
+            });
+            
+            // Unlock any locked bubble and hide panel
+            if (lockedBubble) {
+                lockedBubble = null;
+                hideInfoPanel();
+            }
+            
+            updateUrlHash();
         });
 
         // Lighting
