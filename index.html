@@ -670,6 +670,51 @@
     </div>
 
     <script>
+        // Configuration constants (avoid magic numbers)
+        const CFG = {
+            // Animation
+            LERP: 0.1,
+            FLOAT_SPEED: 0.001,
+            FLOAT_AMPLITUDE: 0.1,
+
+            // Scales
+            DEFAULT_SCALE: 1,
+            SELECTED_SCALE: 1.3,
+            DRAG_SCALE: 1.3,
+            DESELECTED_SCALE: 0.5,
+
+            // Opacity
+            SELECTED_OPACITY: 1.0,
+            ACTIVE_OPACITY: 0.9,
+            DESELECTED_OPACITY: 0.3,
+
+            // Labels / canvas
+            LABEL_CANVAS_W: 512,
+            LABEL_CANVAS_H: 80,
+            STATUS_CANVAS_H: 64,
+            LABEL_FONT_SIZE: 32,
+            NAME_LABEL_OFFSET_Y: -0.1,
+            STATUS_LABEL_OFFSET_Y: 0.75,
+            NAME_LABEL_SCALE: { x: 5, y: 0.8 },
+            STATUS_LABEL_SCALE: { x: 4, y: 0.5 },
+
+            // Camera
+            CAMERA_Z_SMALL: 28,
+            CAMERA_Z_MEDIUM: 24,
+            CAMERA_Z_LARGE: 18,
+            CAMERA_Z_MIN: 8,
+            CAMERA_Z_MAX: 30,
+
+            // Visuals
+            GLOW_OPACITY: 0.2,
+            GLOW_HIGHLIGHT_OPACITY: 0.4
+        };
+        // Auto-rotation thresholds
+        CFG.AUTO_ROTATE_THRESHOLD = 0.001;
+        CFG.AUTO_ROTATE_AMOUNT = 0.0005;
+        // Projection Z used when converting mouse to world coordinates
+        CFG.PROJECTION_Z = 0.5;
+
         // Data for all 20 identity types
         const identityData = {
             // Category: Living and Culture
@@ -966,11 +1011,11 @@
 
             // On mobile/small screens, zoom out more to fit the wheel
             if (width <= 480) {
-                return 28;
+                return CFG.CAMERA_Z_SMALL;
             } else if (width <= 768) {
-                return 24;
+                return CFG.CAMERA_Z_MEDIUM;
             } else {
-                return 18;
+                return CFG.CAMERA_Z_LARGE;
             }
         }
 
@@ -1011,14 +1056,14 @@
         function createTextSprite(text, color) {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 80;
+            canvas.width = CFG.LABEL_CANVAS_W;
+            canvas.height = CFG.LABEL_CANVAS_H;
 
             context.fillStyle = 'transparent';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
             // Measure text and adjust font size if needed
-            let fontSize = 32; // Increased from 24
+            let fontSize = CFG.LABEL_FONT_SIZE;
             context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
             let textWidth = context.measureText(text).width;
 
@@ -1050,7 +1095,7 @@
             });
 
             const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(5, 0.8, 1); // Larger sprite for bigger font
+            sprite.scale.set(CFG.NAME_LABEL_SCALE.x, CFG.NAME_LABEL_SCALE.y, 1); // Larger sprite for bigger font
             sprite.renderOrder = 999;
 
             return sprite;
@@ -1072,7 +1117,7 @@
             const material = new THREE.MeshPhongMaterial({
                 color: new THREE.Color(categoryInfo.color),
                 transparent: true,
-                opacity: 0.9,
+                opacity: CFG.ACTIVE_OPACITY,
                 shininess: 100,
                 emissive: new THREE.Color(categoryInfo.color),
                 emissiveIntensity: 0.15
@@ -1086,8 +1131,8 @@
                 angle,
                 currentRing: 'inner',
                 points: 3,
-                targetScale: 1,
-                targetOpacity: 0.9,
+                targetScale: CFG.DEFAULT_SCALE,
+                targetOpacity: CFG.ACTIVE_OPACITY,
                 isDeselected: false,
                 targetPosition: { x, y, z: 0 }
             };
@@ -1097,7 +1142,7 @@
             const glowMaterial = new THREE.MeshBasicMaterial({
                 color: new THREE.Color(categoryInfo.color),
                 transparent: true,
-                opacity: 0.2
+                opacity: CFG.GLOW_OPACITY
             });
             const glow = new THREE.Mesh(glowGeometry, glowMaterial);
             bubble.add(glow);
@@ -1105,15 +1150,15 @@
 
             // Add text label (name of category on bubble)
             const label = createTextSprite(name, categoryInfo.color);
-            label.position.set(0, -0.1, 0);
+            label.position.set(0, CFG.NAME_LABEL_OFFSET_Y, 0);
             bubble.add(label);
             bubble.userData.label = label;
-            bubble.userData.labelLocalPos = { x: 0, y: -0.1, z: 0 };
+            bubble.userData.labelLocalPos = { x: 0, y: CFG.NAME_LABEL_OFFSET_Y, z: 0 };
 
             // Add status label (current position below bubble)
             const statusLabel = createTextSprite(data.spectrum.inner, categoryInfo.color);
-            statusLabel.position.set(0, 0.75, 0);
-            statusLabel.scale.set(4, 0.5, 1); // Slightly smaller than name label
+            statusLabel.position.set(0, CFG.STATUS_LABEL_OFFSET_Y, 0);
+            statusLabel.scale.set(CFG.STATUS_LABEL_SCALE.x, CFG.STATUS_LABEL_SCALE.y, 1); // Slightly smaller than name label
             bubble.add(statusLabel);
             bubble.userData.statusLabel = statusLabel;
             bubble.userData.statusLabelLocalPos = { x: 0, y: 0.75, z: 0 };
@@ -1183,8 +1228,8 @@
                 bubbles.forEach(bubble => {
                     if (bubble.userData.category === name) {
                         bubble.userData.isDeselected = !isActive;
-                        bubble.userData.targetOpacity = isActive ? 0.9 : 0.3;
-                        bubble.userData.targetScale = isActive ? 1 : 0.5;
+                        bubble.userData.targetOpacity = isActive ? CFG.ACTIVE_OPACITY : CFG.DESELECTED_OPACITY;
+                        bubble.userData.targetScale = isActive ? CFG.DEFAULT_SCALE : CFG.DESELECTED_SCALE;
                         
                         // If deselecting and this bubble is locked, unlock it
                         if (!isActive && lockedBubble === bubble) {
@@ -1225,11 +1270,11 @@
                 }
                 // Update all bubbles in this category
                 bubbles.forEach(bubble => {
-                    if (bubble.userData.category === name) {
-                        bubble.userData.isDeselected = false;
-                        bubble.userData.targetOpacity = 0.9;
-                        bubble.userData.targetScale = 1;
-                    }
+                        if (bubble.userData.category === name) {
+                            bubble.userData.isDeselected = false;
+                            bubble.userData.targetOpacity = CFG.ACTIVE_OPACITY;
+                            bubble.userData.targetScale = CFG.DEFAULT_SCALE;
+                        }
                 });
             });
             
@@ -1323,14 +1368,14 @@
 
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 64;
+            canvas.width = CFG.LABEL_CANVAS_W;
+            canvas.height = CFG.STATUS_CANVAS_H;
 
             context.fillStyle = 'transparent';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
             // Measure and adjust font size for long text
-            let fontSize = 32;
+            let fontSize = CFG.LABEL_FONT_SIZE;
             context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
             let textWidth = context.measureText(text).width;
             const maxWidth = canvas.width - 20;
@@ -1463,10 +1508,10 @@
             if (intersects.length > 0) {
                 isDraggingBubble = true;
                 draggedBubble = intersects[0].object;
-                draggedBubble.userData.targetScale = 1.3;
+                draggedBubble.userData.targetScale = CFG.DRAG_SCALE;
 
                 // Calculate offset: difference between click position radius and bubble radius
-                const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+                const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
                 vector.unproject(camera);
                 const dir = vector.sub(camera.position).normalize();
                 const distance = -camera.position.z / dir.z;
@@ -1508,7 +1553,7 @@
 
             if (isDraggingBubble && draggedBubble) {
                 // Convert mouse to 3D position on XY plane
-                const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+                const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
                 vector.unproject(camera);
                 const dir = vector.sub(camera.position).normalize();
                 const distance = -camera.position.z / dir.z;
@@ -1545,12 +1590,12 @@
                     lockedBubble = null;
                     hideInfoPanel();
                     // Restore opacity to deselected state if applicable
-                    clickedBubble.userData.targetOpacity = clickedBubble.userData.isDeselected ? 0.3 : 0.9;
+                    clickedBubble.userData.targetOpacity = clickedBubble.userData.isDeselected ? CFG.DESELECTED_OPACITY : CFG.ACTIVE_OPACITY;
                 } else {
                     lockedBubble = clickedBubble;
                     updateInfoPanel(clickedBubble);
                     // Set full opacity for selected bubble
-                    clickedBubble.userData.targetOpacity = 1.0;
+                    clickedBubble.userData.targetOpacity = CFG.SELECTED_OPACITY;
                 }
             } else {
                 lockedBubble = null;
@@ -1560,7 +1605,7 @@
 
         container.addEventListener('wheel', (e) => {
             camera.position.z += e.deltaY * 0.01;
-            camera.position.z = Math.max(8, Math.min(30, camera.position.z));
+            camera.position.z = Math.max(CFG.CAMERA_Z_MIN, Math.min(CFG.CAMERA_Z_MAX, camera.position.z));
         });
 
         // Animation loop
@@ -1576,8 +1621,8 @@
             rotationVelocity.y *= 0.95;
 
             if (!isDragging && !isDraggingBubble && !lockedBubble &&
-                Math.abs(rotationVelocity.x) < 0.001 && Math.abs(rotationVelocity.y) < 0.001) {
-                scene.rotation.z += 0.0005;
+                Math.abs(rotationVelocity.x) < CFG.AUTO_ROTATE_THRESHOLD && Math.abs(rotationVelocity.y) < CFG.AUTO_ROTATE_THRESHOLD) {
+                scene.rotation.z += CFG.AUTO_ROTATE_AMOUNT;
             }
 
             // Hover detection
@@ -1587,16 +1632,16 @@
             // Reset all bubbles (but keep locked bubble highlighted and deselected state)
             bubbles.forEach(bubble => {
                 if (bubble === lockedBubble) {
-                    bubble.userData.targetScale = 1.3;
-                    bubble.userData.targetOpacity = 1.0;
-                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = 0.4;
+                    bubble.userData.targetScale = CFG.SELECTED_SCALE;
+                    bubble.userData.targetOpacity = CFG.SELECTED_OPACITY;
+                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = CFG.GLOW_HIGHLIGHT_OPACITY;
                 } else if (bubble === draggedBubble) {
                     // Keep drag scale
                 } else {
                     // Preserve deselected state, otherwise reset to normal size and opacity
-                    bubble.userData.targetScale = bubble.userData.isDeselected ? 0.5 : 1;
-                    bubble.userData.targetOpacity = bubble.userData.isDeselected ? 0.3 : 0.9;
-                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = 0.2;
+                    bubble.userData.targetScale = bubble.userData.isDeselected ? CFG.DESELECTED_SCALE : CFG.DEFAULT_SCALE;
+                    bubble.userData.targetOpacity = bubble.userData.isDeselected ? CFG.DESELECTED_OPACITY : CFG.ACTIVE_OPACITY;
+                    if (bubble.userData.glow) bubble.userData.glow.material.opacity = CFG.GLOW_OPACITY;
                 }
             });
 
@@ -1623,13 +1668,13 @@
                 // Scale animation
                 const currentScale = bubble.scale.x;
                 const targetScale = bubble.userData.targetScale;
-                const newScale = currentScale + (targetScale - currentScale) * 0.1;
+                const newScale = currentScale + (targetScale - currentScale) * CFG.LERP;
                 bubble.scale.set(newScale, newScale, newScale);
 
                 // Opacity animation
                 const currentOpacity = bubble.material.opacity;
                 const targetOpacity = bubble.userData.targetOpacity;
-                const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.1;
+                const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * CFG.LERP;
                 bubble.material.opacity = newOpacity;
 
                 // Apply opacity to label sprites as well
@@ -1639,23 +1684,25 @@
                 // Position animation (snap to ring)
                 if (!isDraggingBubble || bubble !== draggedBubble) {
                     const target = bubble.userData.targetPosition;
-                    bubble.position.x += (target.x - bubble.position.x) * 0.1;
-                    bubble.position.y += (target.y - bubble.position.y) * 0.1;
-                    bubble.position.z += (target.z - bubble.position.z) * 0.1;
+                    bubble.position.x += (target.x - bubble.position.x) * CFG.LERP;
+                    bubble.position.y += (target.y - bubble.position.y) * CFG.LERP;
+                    bubble.position.z += (target.z - bubble.position.z) * CFG.LERP;
                 }
 
                 // Subtle floating
-                const time = Date.now() * 0.001;
-                bubble.position.z = Math.sin(time + index) * 0.1;
+                const time = Date.now() * CFG.FLOAT_SPEED;
+                bubble.position.z = Math.sin(time + index) * CFG.FLOAT_AMPLITUDE;
 
                 // Make labels face camera and keep in fixed position
                 if (bubble.userData.label) {
                     bubble.userData.label.quaternion.copy(camera.quaternion);
-                    bubble.userData.label.position.copy(bubble.userData.labelLocalPos);
+                    const lp = bubble.userData.labelLocalPos;
+                    bubble.userData.label.position.set(lp.x, lp.y, lp.z);
                 }
                 if (bubble.userData.statusLabel) {
                     bubble.userData.statusLabel.quaternion.copy(camera.quaternion);
-                    bubble.userData.statusLabel.position.copy(bubble.userData.statusLabelLocalPos);
+                    const sp = bubble.userData.statusLabelLocalPos;
+                    bubble.userData.statusLabel.position.set(sp.x, sp.y, sp.z);
                 }
             });
 
@@ -1787,8 +1834,8 @@
                             bubbles.forEach(bubble => {
                                 if (bubble.userData.category === catName) {
                                     bubble.userData.isDeselected = !isActive;
-                                    bubble.userData.targetOpacity = isActive ? 0.9 : 0.3;
-                                    bubble.userData.targetScale = isActive ? 1 : 0.5;
+                                    bubble.userData.targetOpacity = isActive ? CFG.ACTIVE_OPACITY : CFG.DESELECTED_OPACITY;
+                                    bubble.userData.targetScale = isActive ? CFG.DEFAULT_SCALE : CFG.DESELECTED_SCALE;
                                 }
                             });
                         }
