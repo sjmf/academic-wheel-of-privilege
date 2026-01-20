@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Wheel of Privilege - Interactive Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 380px;
+            max-height: calc(100vh - 40px);
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        #info-panel.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        #info-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        #info-panel .category-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        #info-panel .privilege-level {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        #info-panel .privilege-level .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        #info-panel .description {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 16px;
+        }
+
+        #info-panel .uk-law {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        #info-panel .uk-law h3 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #info-panel .uk-law p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        #info-panel .uk-law.protected {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        #info-panel .uk-law.partial {
+            background: rgba(234, 179, 8, 0.15);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+
+        #info-panel .uk-law.not-protected {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        #info-panel .spectrum {
+            margin-top: 16px;
+        }
+
+        #info-panel .spectrum h3 {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        #info-panel .spectrum-items {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        #info-panel .spectrum-item {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        #info-panel .spectrum-item.outer {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        #info-panel .spectrum-item.middle {
+            background: rgba(234, 179, 8, 0.2);
+            border: 1px solid rgba(234, 179, 8, 0.4);
+        }
+
+        #info-panel .spectrum-item.inner {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        #header {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            max-width: 400px;
+        }
+
+        #header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #header p {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.5;
+        }
+
+        #legend {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        #legend h3 {
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #legend .legend-items {
+            display: flex;
+            gap: 16px;
+        }
+
+        #legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #legend .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        #legend .legend-dot.inner { background: #22c55e; }
+        #legend .legend-dot.middle { background: #eab308; }
+        #legend .legend-dot.outer { background: #ef4444; }
+
+        #citation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            max-width: 380px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            line-height: 1.4;
+            text-align: right;
+            z-index: 100;
+        }
+
+        #citation a {
+            color: rgba(96, 165, 250, 0.7);
+            text-decoration: none;
+        }
+
+        #citation a:hover {
+            text-decoration: underline;
+        }
+
+        #instructions {
+            position: fixed;
+            bottom: 110px;
+            left: 32px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 100;
+        }
+
+        .category-filter {
+            position: fixed;
+            top: 180px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .category-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+            color: white;
+            font-weight: 500;
+        }
+
+        .category-btn:hover, .category-btn.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            #header {
+                top: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                text-align: center;
+                max-width: calc(100% - 24px);
+                width: 100%;
+                padding: 0 12px;
+            }
+
+            #header h1 {
+                font-size: 1.4rem;
+                margin-bottom: 4px;
+            }
+
+            #header p {
+                font-size: 0.75rem;
+                line-height: 1.4;
+            }
+
+            .category-filter {
+                position: fixed;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                flex-direction: row;
+                gap: 6px;
+                padding: 12px;
+                background: rgba(15, 23, 42, 0.95);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                overflow-x: auto;
+                justify-content: flex-start;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .category-btn {
+                padding: 6px 12px;
+                font-size: 0.7rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .category-btn:hover, .category-btn.active {
+                transform: none;
+            }
+
+            #info-panel {
+                position: fixed;
+                top: auto;
+                bottom: 60px;
+                left: 12px;
+                right: 12px;
+                width: auto;
+                max-height: 50vh;
+                border-radius: 16px 16px 0 0;
+                transform: translateY(100%);
+                padding: 20px;
+            }
+
+            #info-panel.visible {
+                transform: translateY(0);
+            }
+
+            #info-panel h2 {
+                font-size: 1.2rem;
+            }
+
+            #info-panel .description {
+                font-size: 0.85rem;
+            }
+
+            #info-panel .uk-law {
+                padding: 12px;
+            }
+
+            #info-panel .uk-law p {
+                font-size: 0.8rem;
+            }
+
+            #info-panel .spectrum-item {
+                padding: 8px 4px;
+                font-size: 0.65rem;
+            }
+
+            #legend {
+                display: none;
+            }
+
+            #citation {
+                display: none;
+            }
+
+            #instructions {
+                display: none;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 400px) {
+            #header h1 {
+                font-size: 1.2rem;
+            }
+
+            #header p {
+                font-size: 0.7rem;
+            }
+
+            .category-btn {
+                padding: 5px 10px;
+                font-size: 0.65rem;
+            }
+
+            #info-panel {
+                padding: 16px;
+                max-height: 45vh;
+            }
+
+            #info-panel h2 {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <div id="header">
+        <h1>Academic Wheel of Privilege</h1>
+        <p>An interactive visualization exploring 20 identity types across 7 categories, showing how privilege intersects in academia.</p>
+    </div>
+
+    <div class="category-filter" id="category-filter"></div>
+
+    <div id="info-panel">
+        <h2 id="panel-title">Hover over a bubble</h2>
+        <div class="category-badge" id="panel-category"></div>
+        <div class="privilege-level" id="panel-privilege">
+            <div class="dot"></div>
+            <span></span>
+        </div>
+        <p class="description" id="panel-description"></p>
+        <div class="uk-law" id="panel-uk-law">
+            <h3><span id="uk-law-icon"></span> <span id="uk-law-title"></span></h3>
+            <p id="uk-law-text"></p>
+        </div>
+        <div class="spectrum" id="panel-spectrum">
+            <h3>Privilege Spectrum</h3>
+            <div class="spectrum-items" id="spectrum-items"></div>
+        </div>
+    </div>
+
+    <div id="legend">
+        <h3>Privilege Level (Points)</h3>
+        <div class="legend-items">
+            <div class="legend-item">
+                <div class="legend-dot inner"></div>
+                <span>Inner (3 pts) - Most Privileged</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot middle"></div>
+                <span>Middle (2 pts)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot outer"></div>
+                <span>Outer (1 pt) - Least Privileged</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="instructions">
+        Click and drag to rotate | Scroll to zoom | Hover over bubbles for details
+    </div>
+
+    <div id="citation">
+        Based on: Elsherif, M. M., et al. (2022). Bridging Neurodiversity and Open Scholarship.<br>
+        <a href="https://doi.org/10.31222/osf.io/k7a9p" target="_blank">https://doi.org/10.31222/osf.io/k7a9p</a><br>
+        Adapted from Sylvia Duckworth's Wheel of Privilege
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Data for all 20 identity types
+        const identityData = {
+            // Category: Living and Culture
+            "Skin Color": {
+                category: "Living and Culture",
+                categoryColor: "#f472b6",
+                spectrum: { outer: "Dark", middle: "Various shades", inner: "White" },
+                description: "Skin color affects how individuals are perceived and treated in academic and social settings. Lighter skin tones are often associated with greater privilege in Western academic contexts.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Characteristic",
+                    text: "Race, including skin color, is a protected characteristic under the Equality Act 2010. Discrimination based on skin color is unlawful in employment, education, and services."
+                }
+            },
+            "Religion and Culture": {
+                category: "Living and Culture",
+                categoryColor: "#f472b6",
+                spectrum: { outer: "Not widely accepted", middle: "Usually accepted", inner: "Widely accepted" },
+                description: "Religious and cultural backgrounds influence access to academic networks, understanding of hidden curricula, and ability to participate fully in academic life.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Characteristic",
+                    text: "Religion or belief is a protected characteristic under the Equality Act 2010. This includes religious and philosophical beliefs, as well as lack of belief."
+                }
+            },
+            "Citizenship": {
+                category: "Living and Culture",
+                categoryColor: "#f472b6",
+                spectrum: { outer: "Undocumented", middle: "Documented", inner: "Citizen" },
+                description: "Citizenship status affects access to funding, employment opportunities, and the ability to participate freely in academic activities without visa restrictions.",
+                ukLaw: {
+                    status: "partial",
+                    title: "Partial Protection",
+                    text: "While nationality is a protected characteristic, immigration status itself is not directly protected. However, indirect discrimination based on nationality may be unlawful."
+                }
+            },
+            "Language": {
+                category: "Living and Culture",
+                categoryColor: "#f472b6",
+                spectrum: { outer: "Non-English monolingual", middle: "Learned English", inner: "Native English" },
+                description: "English language proficiency significantly impacts academic success, publication opportunities, and networking in predominantly Anglophone academic environments.",
+                ukLaw: {
+                    status: "partial",
+                    title: "Indirect Protection",
+                    text: "Language is not a protected characteristic, but discrimination based on language may constitute indirect race discrimination if it disproportionately affects certain ethnic groups."
+                }
+            },
+
+            // Category: Caregiving
+            "Caring Duties": {
+                category: "Caregiving",
+                categoryColor: "#a78bfa",
+                spectrum: { outer: "Sole carer", middle: "Shared care", inner: "No care duties" },
+                description: "Caring responsibilities for children, elderly relatives, or others significantly impact time available for research, networking, and career advancement.",
+                ukLaw: {
+                    status: "partial",
+                    title: "Indirect Protection",
+                    text: "While caring duties aren't directly protected, discrimination against carers may constitute indirect sex discrimination (as women disproportionately bear caring responsibilities) under the Equality Act 2010."
+                }
+            },
+
+            // Category: Education and Career
+            "Caregiver Educational Level": {
+                category: "Education and Career",
+                categoryColor: "#60a5fa",
+                spectrum: { outer: "Primary/Secondary", middle: "Tertiary", inner: "Advanced degrees" },
+                description: "Parents' or caregivers' educational background influences cultural capital, understanding of academic systems, and access to guidance and networks.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Parental education level is not a protected characteristic. However, it relates to socioeconomic background, which the Equality Act 2010 does not directly cover."
+                }
+            },
+            "Formal Education": {
+                category: "Education and Career",
+                categoryColor: "#60a5fa",
+                spectrum: { outer: "None", middle: "Limited", inner: "Degree(s)" },
+                description: "Level of formal education affects access to academic positions, credibility in scholarly discussions, and ability to navigate academic institutions.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Educational qualifications are not a protected characteristic. Requiring qualifications is generally lawful if justified for the role."
+                }
+            },
+            "Funding/Resources": {
+                category: "Education and Career",
+                categoryColor: "#60a5fa",
+                spectrum: { outer: "None/Very low", middle: "Medium", inner: "High" },
+                description: "Access to research funding and institutional resources determines capacity to conduct research, attend conferences, and publish in prestigious venues.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Access to funding is not a protected characteristic, though funding disparities may intersect with protected characteristics like race or disability."
+                }
+            },
+            "Career Stage": {
+                category: "Education and Career",
+                categoryColor: "#60a5fa",
+                spectrum: { outer: "Early career", middle: "Mid-career", inner: "Late career/Tenured" },
+                description: "Career stage affects job security, influence in academic decisions, and access to resources and networks that support career advancement.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Related to Age Protection",
+                    text: "Age is a protected characteristic under the Equality Act 2010. Career stage discrimination may constitute age discrimination if it disproportionately affects certain age groups."
+                }
+            },
+            "Institution": {
+                category: "Education and Career",
+                categoryColor: "#60a5fa",
+                spectrum: { outer: "Teaching intensive", middle: "Equal teaching/research", inner: "Research intensive" },
+                description: "Type of institution affects time for research, access to funding, prestige, and career progression opportunities in academia.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Institutional type is not a protected characteristic. However, institutional prestige hierarchies may reinforce existing inequalities."
+                }
+            },
+
+            // Category: Gender and Sexuality
+            "Gender": {
+                category: "Gender and Sexuality",
+                categoryColor: "#fb923c",
+                spectrum: { outer: "Trans/Non-binary/Intersex", middle: "Cis woman", inner: "Cis man" },
+                description: "Gender identity and expression affect experiences of discrimination, access to opportunities, and representation in academic leadership positions.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Characteristics",
+                    text: "Sex and gender reassignment are protected characteristics under the Equality Act 2010. This protects against discrimination based on being male, female, or undergoing gender transition."
+                }
+            },
+            "Sexuality": {
+                category: "Gender and Sexuality",
+                categoryColor: "#fb923c",
+                spectrum: { outer: "Lesbian/Bi/Pan/Asexual", middle: "Gay man", inner: "Heterosexual" },
+                description: "Sexual orientation influences experiences of inclusion or exclusion in academic environments and can affect career progression and wellbeing.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Characteristic",
+                    text: "Sexual orientation is a protected characteristic under the Equality Act 2010. Discrimination based on being lesbian, gay, bisexual, or heterosexual is unlawful."
+                }
+            },
+
+            // Category: Race
+            "Current Wealth": {
+                category: "Socioeconomic",
+                categoryColor: "#22d3d1",
+                spectrum: { outer: "Poor", middle: "Middle class", inner: "Rich" },
+                description: "Current wealth affects ability to access education, take unpaid opportunities, relocate for positions, and weather periods of job insecurity.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Socioeconomic status is not a protected characteristic under the Equality Act 2010, though the Public Sector Equality Duty includes consideration of socioeconomic disadvantage in some contexts."
+                }
+            },
+            "Housing": {
+                category: "Socioeconomic",
+                categoryColor: "#22d3d1",
+                spectrum: { outer: "Homeless", middle: "Renting", inner: "Owns property" },
+                description: "Housing stability affects ability to focus on academic work, access to quiet study spaces, and financial security needed for career risk-taking.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Housing status is not a protected characteristic. However, housing discrimination may intersect with protected characteristics like race or disability."
+                }
+            },
+
+            // Category: Health and Wellbeing
+            "Neurodiversity": {
+                category: "Health and Wellbeing",
+                categoryColor: "#4ade80",
+                spectrum: { outer: "Multiply neurodivergent", middle: "Some neurodivergence", inner: "Neurotypical" },
+                description: "Neurodivergent individuals (autism, ADHD, dyslexia, etc.) face unique challenges in academic environments designed for neurotypical people, including sensory issues and executive function demands.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Under Disability",
+                    text: "Neurodevelopmental conditions that have a substantial and long-term adverse effect on ability to carry out normal day-to-day activities are protected as disabilities under the Equality Act 2010."
+                }
+            },
+            "Mental Health": {
+                category: "Health and Wellbeing",
+                categoryColor: "#4ade80",
+                spectrum: { outer: "Vulnerable", middle: "Mostly stable", inner: "Robust" },
+                description: "Mental health affects capacity to manage academic pressures, maintain productivity, and navigate competitive and often stressful academic environments.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Under Disability",
+                    text: "Mental health conditions that have a substantial and long-term adverse effect on day-to-day activities are protected as disabilities under the Equality Act 2010."
+                }
+            },
+            "Disability": {
+                category: "Health and Wellbeing",
+                categoryColor: "#4ade80",
+                spectrum: { outer: "Multiply disabled", middle: "Some disability", inner: "Able-bodied" },
+                description: "Physical disabilities affect access to academic spaces, travel for conferences, and ability to perform certain research tasks without accommodations.",
+                ukLaw: {
+                    status: "protected",
+                    title: "Protected Characteristic",
+                    text: "Disability is a protected characteristic under the Equality Act 2010. Employers and institutions have a duty to make reasonable adjustments for disabled individuals."
+                }
+            },
+            "Body Size": {
+                category: "Health and Wellbeing",
+                categoryColor: "#4ade80",
+                spectrum: { outer: "Large", middle: "Average", inner: "Slim" },
+                description: "Body size affects how individuals are perceived professionally, can influence hiring decisions, and impacts experiences of belonging in academic settings.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Body size or weight is not a protected characteristic under the Equality Act 2010. However, obesity may be considered a disability in some cases if it meets the legal definition."
+                }
+            },
+
+            // Category: Childhood and Development
+            "Childhood Household Wealth": {
+                category: "Childhood and Development",
+                categoryColor: "#fbbf24",
+                spectrum: { outer: "Poor", middle: "Middle class", inner: "Rich" },
+                description: "Childhood socioeconomic status affects educational opportunities, cultural capital, and networks that influence later academic success.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Childhood socioeconomic background is not a protected characteristic, though it significantly influences life outcomes and intersects with protected characteristics."
+                }
+            },
+            "Childhood Household Stability": {
+                category: "Childhood and Development",
+                categoryColor: "#fbbf24",
+                spectrum: { outer: "Unstable", middle: "Mostly stable", inner: "Stable" },
+                description: "Childhood stability affects attachment, mental health, and ability to develop skills and networks that support academic success.",
+                ukLaw: {
+                    status: "not-protected",
+                    title: "Not Directly Protected",
+                    text: "Childhood experiences are not protected characteristics, though adverse childhood experiences may result in conditions that are protected as disabilities."
+                }
+            }
+        };
+
+        // Category colors and positions
+        const categories = {
+            "Living and Culture": { color: "#f472b6", angle: 0 },
+            "Caregiving": { color: "#a78bfa", angle: 51.4 },
+            "Education and Career": { color: "#60a5fa", angle: 102.8 },
+            "Gender and Sexuality": { color: "#fb923c", angle: 154.2 },
+            "Socioeconomic": { color: "#22d3d1", angle: 205.6 },
+            "Health and Wellbeing": { color: "#4ade80", angle: 257 },
+            "Childhood and Development": { color: "#fbbf24", angle: 308.4 }
+        };
+
+        // Scene setup
+        const container = document.getElementById('container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Function to calculate optimal camera distance based on screen size
+        function getOptimalCameraZ() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const minDimension = Math.min(width, height);
+
+            // On mobile/small screens, zoom out more to fit the wheel
+            if (width <= 480) {
+                return 28;
+            } else if (width <= 768) {
+                return 24;
+            } else {
+                return 18;
+            }
+        }
+
+        camera.position.z = getOptimalCameraZ();
+
+        // Raycaster for hover detection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Store bubble meshes
+        const bubbles = [];
+        let hoveredBubble = null;
+
+        // Create central sphere
+        const centerGeometry = new THREE.SphereGeometry(2, 64, 64);
+        const centerMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1e293b,
+            transparent: true,
+            opacity: 0.9,
+            shininess: 100
+        });
+        const centerSphere = new THREE.Mesh(centerGeometry, centerMaterial);
+        scene.add(centerSphere);
+
+        // Create concentric rings
+        const ringRadii = [4.5, 6.5, 8.5]; // inner, middle, outer
+        const ringColors = [0x22c55e, 0xeab308, 0xef4444];
+
+        ringRadii.forEach((radius, index) => {
+            const ringGeometry = new THREE.TorusGeometry(radius, 0.03, 16, 100);
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                color: ringColors[index],
+                transparent: true,
+                opacity: 0.4
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            // No rotation needed - rings are now in XY plane facing camera
+            scene.add(ring);
+        });
+
+        // Create bubbles for each identity
+        function createBubble(name, data, positionIndex, totalInCategory) {
+            const categoryInfo = categories[data.category];
+            const baseAngle = (categoryInfo.angle * Math.PI) / 180;
+            const angleSpread = (360 / 7) * Math.PI / 180;
+            const angle = baseAngle + (positionIndex - (totalInCategory - 1) / 2) * (angleSpread / Math.max(totalInCategory, 1) * 0.8);
+
+            // Determine which ring based on privilege level (we'll place at middle ring initially)
+            // The visualization shows all three levels for each identity
+            const radius = 6.5; // middle ring
+
+            // Position in XY plane (facing camera) instead of XZ plane
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            const z = (Math.random() - 0.5) * 0.3; // slight depth variation
+
+            const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const material = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(categoryInfo.color),
+                transparent: true,
+                opacity: 0.85,
+                shininess: 100,
+                emissive: new THREE.Color(categoryInfo.color),
+                emissiveIntensity: 0.1
+            });
+
+            const bubble = new THREE.Mesh(geometry, material);
+            bubble.position.set(x, y, z);
+            bubble.userData = { name, ...data, targetScale: 1, currentScale: 1 };
+
+            // Add glow effect
+            const glowGeometry = new THREE.SphereGeometry(0.55, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(categoryInfo.color),
+                transparent: true,
+                opacity: 0.2
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            bubble.add(glow);
+            bubble.userData.glow = glow;
+
+            scene.add(bubble);
+            bubbles.push(bubble);
+
+            // Create connecting line to center
+            const points = [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(x * 0.3, y * 0.3, 0)
+            ];
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMaterial = new THREE.LineBasicMaterial({
+                color: categoryInfo.color,
+                transparent: true,
+                opacity: 0.3
+            });
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+
+            return bubble;
+        }
+
+        // Group identities by category
+        const identitiesByCategory = {};
+        Object.entries(identityData).forEach(([name, data]) => {
+            if (!identitiesByCategory[data.category]) {
+                identitiesByCategory[data.category] = [];
+            }
+            identitiesByCategory[data.category].push({ name, data });
+        });
+
+        // Create bubbles
+        Object.entries(identitiesByCategory).forEach(([category, identities]) => {
+            identities.forEach((identity, index) => {
+                createBubble(identity.name, identity.data, index, identities.length);
+            });
+        });
+
+        // Create category filter buttons
+        const filterContainer = document.getElementById('category-filter');
+        Object.entries(categories).forEach(([name, info]) => {
+            const btn = document.createElement('button');
+            btn.className = 'category-btn active';
+            btn.style.backgroundColor = info.color;
+            btn.textContent = name;
+            btn.dataset.category = name;
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+                const isActive = btn.classList.contains('active');
+                bubbles.forEach(bubble => {
+                    if (bubble.userData.category === name) {
+                        bubble.visible = isActive;
+                    }
+                });
+            });
+            filterContainer.appendChild(btn);
+        });
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        const pointLight2 = new THREE.PointLight(0x60a5fa, 0.5, 100);
+        pointLight2.position.set(-10, -10, 10);
+        scene.add(pointLight2);
+
+        // Mouse controls
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationVelocity = { x: 0, y: 0 };
+        let lockedBubble = null; // Track clicked/locked bubble
+
+        container.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        container.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        container.addEventListener('mouseleave', () => {
+            isDragging = false;
+        });
+
+        // Click to lock/unlock bubble
+        container.addEventListener('click', (e) => {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bubbles);
+
+            if (intersects.length > 0) {
+                const clickedBubble = intersects[0].object;
+                if (lockedBubble === clickedBubble) {
+                    // Clicking same bubble unlocks it
+                    lockedBubble = null;
+                } else {
+                    // Lock to this bubble
+                    lockedBubble = clickedBubble;
+                    updateInfoPanel(clickedBubble);
+                }
+            } else {
+                // Clicking background unlocks
+                lockedBubble = null;
+                hideInfoPanel();
+            }
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+
+                rotationVelocity.x = deltaMove.y * 0.005;
+                rotationVelocity.y = deltaMove.x * 0.005;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        // Zoom with scroll
+        container.addEventListener('wheel', (e) => {
+            camera.position.z += e.deltaY * 0.01;
+            camera.position.z = Math.max(8, Math.min(30, camera.position.z));
+        });
+
+        // Update info panel
+        function updateInfoPanel(bubble) {
+            const panel = document.getElementById('info-panel');
+            const data = bubble.userData;
+
+            document.getElementById('panel-title').textContent = data.name;
+
+            const categoryBadge = document.getElementById('panel-category');
+            categoryBadge.textContent = data.category;
+            categoryBadge.style.backgroundColor = data.categoryColor;
+
+            document.getElementById('panel-description').textContent = data.description;
+
+            // UK Law section
+            const ukLawDiv = document.getElementById('panel-uk-law');
+            ukLawDiv.className = `uk-law ${data.ukLaw.status}`;
+
+            const icons = {
+                'protected': '✓',
+                'partial': '◐',
+                'not-protected': '✗'
+            };
+            document.getElementById('uk-law-icon').textContent = icons[data.ukLaw.status];
+            document.getElementById('uk-law-title').textContent = data.ukLaw.title;
+            document.getElementById('uk-law-text').textContent = data.ukLaw.text;
+
+            // Spectrum section
+            const spectrumItems = document.getElementById('spectrum-items');
+            spectrumItems.innerHTML = `
+                <div class="spectrum-item outer">
+                    <div style="font-weight: 600; margin-bottom: 4px;">1 point</div>
+                    ${data.spectrum.outer}
+                </div>
+                <div class="spectrum-item middle">
+                    <div style="font-weight: 600; margin-bottom: 4px;">2 points</div>
+                    ${data.spectrum.middle}
+                </div>
+                <div class="spectrum-item inner">
+                    <div style="font-weight: 600; margin-bottom: 4px;">3 points</div>
+                    ${data.spectrum.inner}
+                </div>
+            `;
+
+            panel.classList.add('visible');
+        }
+
+        function hideInfoPanel() {
+            document.getElementById('info-panel').classList.remove('visible');
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Apply rotation with momentum
+            // Horizontal drag spins the wheel (Z axis), vertical drag tilts it (X axis)
+            scene.rotation.z -= rotationVelocity.y;
+            scene.rotation.x += rotationVelocity.x;
+
+            // Damping
+            rotationVelocity.x *= 0.95;
+            rotationVelocity.y *= 0.95;
+
+            // Auto-rotate slowly when not dragging, not hovering, and not locked (spin around Z axis)
+            if (!isDragging && !hoveredBubble && !lockedBubble && Math.abs(rotationVelocity.x) < 0.001 && Math.abs(rotationVelocity.y) < 0.001) {
+                scene.rotation.z += 0.001;
+            }
+
+            // Raycasting for hover
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(bubbles);
+
+            // Reset all bubbles (but keep locked bubble highlighted)
+            bubbles.forEach(bubble => {
+                if (bubble === lockedBubble) {
+                    bubble.userData.targetScale = 1.4;
+                    if (bubble.userData.glow) {
+                        bubble.userData.glow.material.opacity = 0.5;
+                    }
+                } else {
+                    bubble.userData.targetScale = 1;
+                    if (bubble.userData.glow) {
+                        bubble.userData.glow.material.opacity = 0.2;
+                    }
+                }
+            });
+
+            // Only update hover state if not locked
+            if (!lockedBubble) {
+                if (intersects.length > 0) {
+                    const bubble = intersects[0].object;
+                    bubble.userData.targetScale = 1.4;
+                    if (bubble.userData.glow) {
+                        bubble.userData.glow.material.opacity = 0.5;
+                    }
+
+                    if (hoveredBubble !== bubble) {
+                        hoveredBubble = bubble;
+                        updateInfoPanel(bubble);
+                    }
+                    document.body.style.cursor = 'pointer';
+                } else {
+                    if (hoveredBubble !== null) {
+                        hoveredBubble = null;
+                        hideInfoPanel();
+                    }
+                    document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
+                }
+            } else {
+                // When locked, still show pointer on bubbles
+                document.body.style.cursor = intersects.length > 0 ? 'pointer' : (isDragging ? 'grabbing' : 'grab');
+            }
+
+            // Animate bubble scales
+            bubbles.forEach(bubble => {
+                const currentScale = bubble.scale.x;
+                const targetScale = bubble.userData.targetScale;
+                const newScale = currentScale + (targetScale - currentScale) * 0.1;
+                bubble.scale.set(newScale, newScale, newScale);
+            });
+
+            // Subtle floating animation (depth wobble)
+            bubbles.forEach((bubble, index) => {
+                const time = Date.now() * 0.001;
+                bubble.position.z = (Math.sin(time + index) * 0.15);
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.position.z = getOptimalCameraZ();
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
