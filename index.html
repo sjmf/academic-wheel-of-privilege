@@ -670,7 +670,7 @@
     </div>
 
     <script>
-        // Configuration constants (avoid magic numbers)
+        // Configuration constants
         const CFG = {
             // Animation
             LERP: 0.1,
@@ -708,12 +708,36 @@
             // Visuals
             GLOW_OPACITY: 0.2,
             GLOW_HIGHLIGHT_OPACITY: 0.4
+        ,
+            // Geometry and interaction defaults
+            RING_TUBE: 0.05,
+            RING_RADIAL_SEGMENTS: 16,
+            RING_TUBULAR_SEGMENTS: 100,
+            BUBBLE_RADIUS: 0.45,
+            BUBBLE_SEGMENTS: { width: 32, height: 32 },
+            GLOW_RADIUS: 0.5,
+            GLOW_SEGMENTS: { width: 32, height: 32 },
+            RING_PADDING: 1,
+
+            // Interaction tuning
+            ROTATION_DAMPING: 0.95,
+            ROTATION_SENSITIVITY: 0.005,
+            ZOOM_SENSITIVITY: 0.01,
+            HOVER_SCALE: 1.2,
+
+            // Camera params
+            CAMERA_FOV: 60,
+            CAMERA_NEAR: 0.1,
+            CAMERA_FAR: 1000,
+            INIT_ROT_X: Math.PI - Math.PI / 8,
+
+            // Auto-rotation thresholds
+            AUTO_ROTATE_THRESHOLD: 0.001,
+            AUTO_ROTATE_AMOUNT: 0.0005,
+
+            // Projection Z used when converting mouse to world coordinates
+            PROJECTION_Z: 0.5
         };
-        // Auto-rotation thresholds
-        CFG.AUTO_ROTATE_THRESHOLD = 0.001;
-        CFG.AUTO_ROTATE_AMOUNT = 0.0005;
-        // Projection Z used when converting mouse to world coordinates
-        CFG.PROJECTION_Z = 0.5;
 
         // Data for all 20 identity types
         const identityData = {
@@ -999,7 +1023,7 @@
         // Scene setup
         const container = document.getElementById('container');
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(CFG.CAMERA_FOV, window.innerWidth / window.innerHeight, CFG.CAMERA_NEAR, CFG.CAMERA_FAR);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -1021,8 +1045,8 @@
 
         camera.position.z = getOptimalCameraZ() * 0.9; // Slight zoom in
 
-        // Set initial rotation (-22.5° = π/8 radians)
-        scene.rotation.x = Math.PI - Math.PI / 8;
+        // Set initial rotation
+        scene.rotation.x = CFG.INIT_ROT_X;
 
         // Raycaster for hover detection
         const raycaster = new THREE.Raycaster();
@@ -1030,6 +1054,7 @@
 
         // Store bubble meshes
         const bubbles = [];
+        let hoveredBubble = null;
         let lockedBubble = null;
         let isDragging = false;
         let isDraggingBubble = false;
@@ -1041,7 +1066,7 @@
         // Create concentric rings
         const ringColors = { inner: 0x22c55e, middle: 0xeab308, outer: 0xef4444 };
         Object.entries(ringRadii).forEach(([name, radius]) => {
-            const ringGeometry = new THREE.TorusGeometry(radius, 0.05, 16, 100);
+            const ringGeometry = new THREE.TorusGeometry(radius, CFG.RING_TUBE, CFG.RING_RADIAL_SEGMENTS, CFG.RING_TUBULAR_SEGMENTS);
             const ringMaterial = new THREE.MeshBasicMaterial({
                 color: ringColors[name],
                 transparent: true,
@@ -1113,7 +1138,7 @@
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius;
 
-            const geometry = new THREE.SphereGeometry(0.45, 32, 32);
+            const geometry = new THREE.SphereGeometry(CFG.BUBBLE_RADIUS, CFG.BUBBLE_SEGMENTS.width, CFG.BUBBLE_SEGMENTS.height);
             const material = new THREE.MeshPhongMaterial({
                 color: new THREE.Color(categoryInfo.color),
                 transparent: true,
@@ -1138,7 +1163,7 @@
             };
 
             // Add glow
-            const glowGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const glowGeometry = new THREE.SphereGeometry(CFG.GLOW_RADIUS, CFG.GLOW_SEGMENTS.width, CFG.GLOW_SEGMENTS.height);
             const glowMaterial = new THREE.MeshBasicMaterial({
                 color: new THREE.Color(categoryInfo.color),
                 transparent: true,
@@ -1562,7 +1587,7 @@
                 // Keep bubble at its angle, just change radius
                 // Apply offset so bubble doesn't jump to cursor
                 const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + dragRadiusOffset;
-                const clampedDist = Math.max(ringRadii.inner - 1, Math.min(ringRadii.outer + 1, currentDist));
+                const clampedDist = Math.max(ringRadii.inner - CFG.RING_PADDING, Math.min(ringRadii.outer + CFG.RING_PADDING, currentDist));
                 const angle = draggedBubble.userData.angle;
 
                 draggedBubble.position.x = Math.cos(angle) * clampedDist;
@@ -1572,8 +1597,8 @@
                     x: e.clientX - previousMousePosition.x,
                     y: e.clientY - previousMousePosition.y
                 };
-                rotationVelocity.x = deltaMove.y * 0.005;
-                rotationVelocity.y = deltaMove.x * 0.005;
+                rotationVelocity.x = deltaMove.y * CFG.ROTATION_SENSITIVITY;
+                rotationVelocity.y = deltaMove.x * CFG.ROTATION_SENSITIVITY;
                 previousMousePosition = { x: e.clientX, y: e.clientY };
             }
         });
@@ -1604,7 +1629,7 @@
         });
 
         container.addEventListener('wheel', (e) => {
-            camera.position.z += e.deltaY * 0.01;
+            camera.position.z += e.deltaY * CFG.ZOOM_SENSITIVITY;
             camera.position.z = Math.max(CFG.CAMERA_Z_MIN, Math.min(CFG.CAMERA_Z_MAX, camera.position.z));
         });
 
