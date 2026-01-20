@@ -16,6 +16,14 @@
             --color-score-min: #ef4444;
             --color-score-mid: #eab308;
             --color-score-max: #22c55e;
+            /* Category colors (used by JS for bubbles/buttons). Use slugified category names. */
+            --cat-living-and-culture: #f472b6;
+            --cat-caregiving: #a78bfa;
+            --cat-education-and-career: #60a5fa;
+            --cat-gender-and-sexuality: #fb923c;
+            --cat-socioeconomic: #22d3d1;
+            --cat-health-and-wellbeing: #4ade80;
+            --cat-childhood-and-development: #fbbf24;
         }
 
         body {
@@ -222,7 +230,7 @@
         #header h1 {
             font-size: 1.8rem;
             margin-bottom: 8px;
-            background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6);
+            background: linear-gradient(90deg, var(--cat-education-and-career), var(--cat-caregiving), var(--cat-living-and-culture));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -246,7 +254,7 @@
         #score-panel .score-value {
             font-size: 2.5rem;
             font-weight: 700;
-            color: #ef4444;
+            color: var(--color-score-min);
             transition: color 0.3s ease;
         }
 
@@ -281,7 +289,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(to right, #ef4444, #eab308, #22c55e);
+            background: linear-gradient(to right, var(--color-score-min), var(--color-score-mid), var(--color-score-max));
             border-radius: 3px;
         }
 
@@ -321,9 +329,9 @@
             border-radius: 50%;
         }
 
-        #legend .legend-dot.inner { background: #22c55e; }
-        #legend .legend-dot.middle { background: #eab308; }
-        #legend .legend-dot.outer { background: #ef4444; }
+        #legend .legend-dot.inner { background: var(--color-score-max); }
+        #legend .legend-dot.middle { background: var(--color-score-mid); }
+        #legend .legend-dot.outer { background: var(--color-score-min); }
 
         #citation {
             position: fixed;
@@ -744,7 +752,6 @@
             // Category: Living and Culture
             "Skin Color": {
                 category: "Living and Culture",
-                categoryColor: "#f472b6",
                 spectrum: { outer: "Dark", middle: "Various shades", inner: "White" },
                 description: "Skin color affects how individuals are perceived and treated in academic and social settings. Lighter skin tones are often associated with greater privilege in Western academic contexts.",
                 ukLaw: {
@@ -755,7 +762,6 @@
             },
             "Religion and Culture": {
                 category: "Living and Culture",
-                categoryColor: "#f472b6",
                 spectrum: { outer: "Not widely accepted", middle: "Usually accepted", inner: "Widely accepted" },
                 description: "Religious and cultural backgrounds influence access to academic networks, understanding of hidden curricula, and ability to participate fully in academic life.",
                 ukLaw: {
@@ -766,7 +772,6 @@
             },
             "Citizenship": {
                 category: "Living and Culture",
-                categoryColor: "#f472b6",
                 spectrum: { outer: "Undocumented", middle: "Documented", inner: "Citizen" },
                 description: "Citizenship status affects access to funding, employment opportunities, and the ability to participate freely in academic activities without visa restrictions.",
                 ukLaw: {
@@ -777,7 +782,6 @@
             },
             "Language": {
                 category: "Living and Culture",
-                categoryColor: "#f472b6",
                 spectrum: { outer: "Non-English monolingual", middle: "Learned English", inner: "Native English" },
                 description: "English language proficiency significantly impacts academic success, publication opportunities, and networking in predominantly Anglophone academic environments.",
                 ukLaw: {
@@ -790,7 +794,6 @@
             // Category: Caregiving
             "Caring Duties": {
                 category: "Caregiving",
-                categoryColor: "#a78bfa",
                 spectrum: { outer: "Sole carer", middle: "Shared care", inner: "No care duties" },
                 description: "Caring responsibilities for children, elderly relatives, or others significantly impact time available for research, networking, and career advancement.",
                 ukLaw: {
@@ -803,7 +806,6 @@
             // Category: Education and Career
             "Caregiver Educational Level": {
                 category: "Education and Career",
-                categoryColor: "#60a5fa",
                 spectrum: { outer: "Primary/Secondary", middle: "Tertiary", inner: "Advanced degrees" },
                 description: "Parents' or caregivers' educational background influences cultural capital, understanding of academic systems, and access to guidance and networks.",
                 ukLaw: {
@@ -814,7 +816,6 @@
             },
             "Formal Education": {
                 category: "Education and Career",
-                categoryColor: "#60a5fa",
                 spectrum: { outer: "None", middle: "Limited", inner: "Degree(s)" },
                 description: "Level of formal education affects access to academic positions, credibility in scholarly discussions, and ability to navigate academic institutions.",
                 ukLaw: {
@@ -825,7 +826,6 @@
             },
             "Funding/Resources": {
                 category: "Education and Career",
-                categoryColor: "#60a5fa",
                 spectrum: { outer: "None/Very low", middle: "Medium", inner: "High" },
                 description: "Access to research funding and institutional resources determines capacity to conduct research, attend conferences, and publish in prestigious venues.",
                 ukLaw: {
@@ -836,7 +836,6 @@
             },
             "Career Stage": {
                 category: "Education and Career",
-                categoryColor: "#60a5fa",
                 spectrum: { outer: "Early career", middle: "Mid-career", inner: "Late career/Tenured" },
                 description: "Career stage affects job security, influence in academic decisions, and access to resources and networks that support career advancement.",
                 ukLaw: {
@@ -847,7 +846,6 @@
             },
             "Institution": {
                 category: "Education and Career",
-                categoryColor: "#60a5fa",
                 spectrum: { outer: "Teaching intensive", middle: "Equal teaching/research", inner: "Research intensive" },
                 description: "Type of institution affects time for research, access to funding, prestige, and career progression opportunities in academia.",
                 ukLaw: {
@@ -860,7 +858,6 @@
             // Category: Gender and Sexuality
             "Gender": {
                 category: "Gender and Sexuality",
-                categoryColor: "#fb923c",
                 spectrum: { outer: "Trans/Non-binary/Intersex", middle: "Cis woman", inner: "Cis man" },
                 description: "Gender identity and expression affect experiences of discrimination, access to opportunities, and representation in academic leadership positions.",
                 ukLaw: {
@@ -871,7 +868,6 @@
             },
             "Sexuality": {
                 category: "Gender and Sexuality",
-                categoryColor: "#fb923c",
                 spectrum: { outer: "Lesbian/Bi/Pan/Asexual", middle: "Gay man", inner: "Heterosexual" },
                 description: "Sexual orientation influences experiences of inclusion or exclusion in academic environments and can affect career progression and wellbeing.",
                 ukLaw: {
@@ -884,7 +880,6 @@
             // Category: Race
             "Current Wealth": {
                 category: "Socioeconomic",
-                categoryColor: "#22d3d1",
                 spectrum: { outer: "Poor", middle: "Middle class", inner: "Rich" },
                 description: "Current wealth affects ability to access education, take unpaid opportunities, relocate for positions, and weather periods of job insecurity.",
                 ukLaw: {
@@ -895,7 +890,6 @@
             },
             "Housing": {
                 category: "Socioeconomic",
-                categoryColor: "#22d3d1",
                 spectrum: { outer: "Homeless", middle: "Renting", inner: "Owns property" },
                 description: "Housing stability affects ability to focus on academic work, access to quiet study spaces, and financial security needed for career risk-taking.",
                 ukLaw: {
@@ -908,7 +902,6 @@
             // Category: Health and Wellbeing
             "Neurodiversity": {
                 category: "Health and Wellbeing",
-                categoryColor: "#4ade80",
                 spectrum: { outer: "Multiply neurodivergent", middle: "Some neurodivergence", inner: "Neurotypical" },
                 description: "Neurodivergent individuals (autism, ADHD, dyslexia, etc.) face unique challenges in academic environments designed for neurotypical people, including sensory issues and executive function demands.",
                 ukLaw: {
@@ -919,7 +912,6 @@
             },
             "Mental Health": {
                 category: "Health and Wellbeing",
-                categoryColor: "#4ade80",
                 spectrum: { outer: "Vulnerable", middle: "Mostly stable", inner: "Robust" },
                 description: "Mental health affects capacity to manage academic pressures, maintain productivity, and navigate competitive and often stressful academic environments.",
                 ukLaw: {
@@ -930,7 +922,6 @@
             },
             "Disability": {
                 category: "Health and Wellbeing",
-                categoryColor: "#4ade80",
                 spectrum: { outer: "Multiply disabled", middle: "Some disability", inner: "Able-bodied" },
                 description: "Physical disabilities affect access to academic spaces, travel for conferences, and ability to perform certain research tasks without accommodations.",
                 ukLaw: {
@@ -941,7 +932,6 @@
             },
             "Body Size": {
                 category: "Health and Wellbeing",
-                categoryColor: "#4ade80",
                 spectrum: { outer: "Large", middle: "Average", inner: "Slim" },
                 description: "Body size affects how individuals are perceived professionally, can influence hiring decisions, and impacts experiences of belonging in academic settings.",
                 ukLaw: {
@@ -954,7 +944,6 @@
             // Category: Childhood and Development
             "Childhood Household Wealth": {
                 category: "Childhood and Development",
-                categoryColor: "#fbbf24",
                 spectrum: { outer: "Poor", middle: "Middle class", inner: "Rich" },
                 description: "Childhood socioeconomic status affects educational opportunities, cultural capital, and networks that influence later academic success.",
                 ukLaw: {
@@ -965,7 +954,6 @@
             },
             "Childhood Household Stability": {
                 category: "Childhood and Development",
-                categoryColor: "#fbbf24",
                 spectrum: { outer: "Unstable", middle: "Mostly stable", inner: "Stable" },
                 description: "Childhood stability affects attachment, mental health, and ability to develop skills and networks that support academic success.",
                 ukLaw: {
@@ -980,37 +968,30 @@
         // Colors based on original Wheel of Privilege diagram
         const categories = {
             "Living and Culture": {
-                color: "#f472b6", // Pastel Pink
                 angle: 0,
                 description: "Factors related to cultural background, identity, and lived experience in society."
             },
             "Caregiving": {
-                color: "#a78bfa", // Pastel Purple
                 angle: 51.4,
                 description: "Responsibilities for caring for others that can impact time and energy available for academic work."
             },
             "Education and Career": {
-                color: "#60a5fa", // Pastel Blue
                 angle: 102.8,
                 description: "Formal educational background, career stage, and access to academic resources and networks."
             },
             "Gender and Sexuality": {
-                color: "#fb923c", // Pastel Orange
                 angle: 154.2,
                 description: "Gender identity and sexual orientation, which affect representation and experiences in academia."
             },
             "Socioeconomic": {
-                color: "#22d3d1", // Pastel Teal
                 angle: 205.6,
                 description: "Current financial status and access to material resources that enable academic participation."
             },
             "Health and Wellbeing": {
-                color: "#4ade80", // Pastel Green
                 angle: 257,
                 description: "Physical and mental health factors that affect ability to participate fully in academic life."
             },
             "Childhood and Development": {
-                color: "#fbbf24", // Pastel Amber
                 angle: 308.4,
                 description: "Early life experiences that shape educational opportunities and cultural capital."
             }
@@ -1044,6 +1025,24 @@
         }
 
         camera.position.z = getOptimalCameraZ() * 0.9; // Slight zoom in
+
+        // Utility: slugify category names for CSS var lookup
+        function slugify(name) {
+            return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        }
+
+        // Read category color from CSS custom properties (fallback to categories map)
+        function getCategoryColor(categoryName) {
+            try {
+                const root = document.documentElement;
+                const varName = '--cat-' + slugify(categoryName);
+                const v = getComputedStyle(root).getPropertyValue(varName).trim();
+                if (v) return v;
+            } catch (e) {
+                // ignore
+            }
+            return (categories[categoryName] && categories[categoryName].color) || '#999999';
+        }
 
         // Set initial rotation
         scene.rotation.x = CFG.INIT_ROT_X;
@@ -1142,6 +1141,7 @@
         // globalIndex is used to equally space all 20 bubbles
         function createBubble(name, data, globalIndex, totalBubbles) {
             const categoryInfo = categories[data.category];
+            const categoryColor = getCategoryColor(data.category);
             // Equally space all bubbles: 360° / 20 = 18° each
             const angle = (globalIndex / totalBubbles) * Math.PI * 2;
 
@@ -1152,11 +1152,11 @@
 
             const geometry = new THREE.SphereGeometry(CFG.BUBBLE_RADIUS, CFG.BUBBLE_SEGMENTS.width, CFG.BUBBLE_SEGMENTS.height);
             const material = new THREE.MeshPhongMaterial({
-                color: new THREE.Color(categoryInfo.color),
+                color: new THREE.Color(categoryColor),
                 transparent: true,
                 opacity: CFG.ACTIVE_OPACITY,
                 shininess: 100,
-                emissive: new THREE.Color(categoryInfo.color),
+                emissive: new THREE.Color(categoryColor),
                 emissiveIntensity: 0.15
             });
 
@@ -1177,7 +1177,7 @@
             // Add glow
             const glowGeometry = new THREE.SphereGeometry(CFG.GLOW_RADIUS, CFG.GLOW_SEGMENTS.width, CFG.GLOW_SEGMENTS.height);
             const glowMaterial = new THREE.MeshBasicMaterial({
-                color: new THREE.Color(categoryInfo.color),
+                color: new THREE.Color(categoryColor),
                 transparent: true,
                 opacity: CFG.GLOW_OPACITY
             });
@@ -1186,14 +1186,14 @@
             bubble.userData.glow = glow;
 
             // Add text label (name of category on bubble)
-            const label = createTextSprite(name, categoryInfo.color);
+            const label = createTextSprite(name, categoryColor);
             label.position.set(0, CFG.NAME_LABEL_OFFSET_Y, 0);
             bubble.add(label);
             bubble.userData.label = label;
             bubble.userData.labelLocalPos = { x: 0, y: CFG.NAME_LABEL_OFFSET_Y, z: 0 };
 
             // Add status label (current position below bubble)
-            const statusLabel = createTextSprite(data.spectrum.inner, categoryInfo.color);
+            const statusLabel = createTextSprite(data.spectrum.inner, categoryColor);
             statusLabel.position.set(0, CFG.STATUS_LABEL_OFFSET_Y, 0);
             statusLabel.scale.set(CFG.STATUS_LABEL_SCALE.x, CFG.STATUS_LABEL_SCALE.y, 1); // Slightly smaller than name label
             bubble.add(statusLabel);
@@ -1232,7 +1232,7 @@
 
         function showCategoryTooltip(name, info, btn) {
             tooltipTitle.textContent = name;
-            tooltipTitle.style.color = info.color;
+            tooltipTitle.style.color = getCategoryColor(name);
             tooltipDescription.textContent = info.description;
 
             // Get items in this category
@@ -1254,7 +1254,7 @@
         Object.entries(categories).forEach(([name, info]) => {
             const btn = document.createElement('button');
             btn.className = 'category-btn active';
-            btn.style.backgroundColor = info.color;
+            btn.style.backgroundColor = getCategoryColor(name);
             btn.textContent = name;
             categoryButtons[name] = btn; // Store button reference
 
