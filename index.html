@@ -1054,16 +1054,16 @@
             bubble.add(glow);
             bubble.userData.glow = glow;
 
-            // Add text label (name above bubble)
+            // Add text label (name of category on bubble)
             const label = createTextSprite(name, categoryInfo.color);
-            label.position.set(0, 1.0, 0);
+            label.position.set(0, -0.1, 0);
             bubble.add(label);
             bubble.userData.label = label;
 
             // Add status label (current position below bubble)
             const statusLabel = createTextSprite(data.spectrum.inner, categoryInfo.color);
-            statusLabel.position.set(0, -1.0, 0);
-            statusLabel.scale.set(4, 0.6, 1); // Slightly smaller than name label
+            statusLabel.position.set(0, 0.75, 0);
+            statusLabel.scale.set(4, 0.5, 1); // Slightly smaller than name label
             bubble.add(statusLabel);
             bubble.userData.statusLabel = statusLabel;
 
@@ -1166,6 +1166,7 @@
         }
 
         // Update status label sprite texture
+        // This is the label that changes on privilege level
         function updateStatusLabel(bubble, text) {
             if (!bubble.userData.statusLabel) return;
 
