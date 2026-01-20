@@ -928,8 +928,8 @@
 
         camera.position.z = getOptimalCameraZ() * 0.9; // Slight zoom in
 
-        // Set initial rotation (45° = π/4 radians)
-        scene.rotation.z = Math.PI / 4;
+        // Set initial rotation (-22.5° = π/8 radians)
+        scene.rotation.x = Math.PI - Math.PI / 8;
 
         // Raycaster for hover detection
         const raycaster = new THREE.Raycaster();
