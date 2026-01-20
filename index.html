@@ -1533,7 +1533,7 @@
             document.getElementById('panel-title').textContent = data.name;
             const categoryBadge = document.getElementById('panel-category');
             categoryBadge.textContent = data.category;
-            categoryBadge.style.backgroundColor = categories[data.category].color;
+            categoryBadge.style.backgroundColor = getCategoryColor(data.category);
             document.getElementById('panel-description').textContent = data.description;
 
             const ukLawDiv = document.getElementById('panel-uk-law');
