@@ -1113,6 +1113,7 @@
         const tooltipTitle = document.getElementById('tooltip-title');
         const tooltipDescription = document.getElementById('tooltip-description');
         const tooltipItems = document.getElementById('tooltip-items');
+        const categoryButtons = {}; // Store buttons by category name for state management
 
         function showCategoryTooltip(name, info, btn) {
             tooltipTitle.textContent = name;
@@ -1140,6 +1141,7 @@
             btn.className = 'category-btn active';
             btn.style.backgroundColor = info.color;
             btn.textContent = name;
+            categoryButtons[name] = btn; // Store button reference
 
             // Click to toggle visibility
             btn.addEventListener('click', () => {
@@ -1158,6 +1160,7 @@
                         }
                     }
                 });
+                updateUrlHash(); // Persist category state to URL
             });
 
             // Hover to show tooltip
@@ -1624,10 +1627,23 @@
         // URL hash encoding for shareable links
         const ringToChar = { inner: 'i', middle: 'm', outer: 'o' };
         const charToRing = { 'i': 'inner', 'm': 'middle', 'o': 'outer' };
+        const stateToChar = { active: 'i', inactive: 'o' };
+        const charToState = { 'i': 'active', 'o': 'inactive' };
 
         function getSelectionsHash() {
-            // Create a compact string: one char per bubble in order
-            return bubbles.map(b => ringToChar[b.userData.currentRing]).join('');
+            // Create bubble hash: one char per bubble in order
+            const bubbleHash = bubbles.map(b => ringToChar[b.userData.currentRing]).join('');
+            
+            // Create category hash: one char per category in order
+            const categoryOrder = Object.keys(categories);
+            const categoryHash = categoryOrder.map(catName => {
+                const btn = categoryButtons[catName];
+                const isActive = btn.classList.contains('active');
+                return isActive ? 'i' : 'o';
+            }).join('');
+            
+            // Return combined hash with separator: bubbles/categories
+            return bubbleHash + '/' + categoryHash;
         }
 
         function updateUrlHash() {
@@ -1637,20 +1653,66 @@
 
         function loadFromUrlHash() {
             const hash = window.location.hash.slice(1); // Remove '#'
-            if (hash && hash.length === bubbles.length) {
+            if (!hash) return false;
+            
+            const parts = hash.split('/');
+            if (parts.length !== 2) return false; // Must have both bubble and category parts
+            
+            const [bubbleHash, categoryHash] = parts;
+            
+            // Validate and load bubble selections
+            if (bubbleHash.length === bubbles.length) {
                 let valid = true;
-                for (let i = 0; i < hash.length; i++) {
-                    if (!charToRing[hash[i]]) {
+                for (let i = 0; i < bubbleHash.length; i++) {
+                    if (!charToRing[bubbleHash[i]]) {
                         valid = false;
                         break;
                     }
                 }
                 if (valid) {
                     bubbles.forEach((b, i) => {
-                        const ring = charToRing[hash[i]];
+                        const ring = charToRing[bubbleHash[i]];
                         if (ring) {
                             // Use original to avoid recursive hash updates
                             originalMoveBubbleToRing(b, ring);
+                        }
+                    });
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+            
+            // Validate and load category selections
+            const categoryOrder = Object.keys(categories);
+            if (categoryHash.length === categoryOrder.length) {
+                let valid = true;
+                for (let i = 0; i < categoryHash.length; i++) {
+                    if (!charToState[categoryHash[i]]) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    categoryOrder.forEach((catName, i) => {
+                        const btn = categoryButtons[catName];
+                        const shouldBeActive = charToState[categoryHash[i]] === 'active';
+                        const isCurrentlyActive = btn.classList.contains('active');
+                        
+                        // Toggle if state differs from current
+                        if (shouldBeActive !== isCurrentlyActive) {
+                            btn.classList.toggle('active');
+                            const isActive = btn.classList.contains('active');
+                            
+                            // Update all bubbles in this category
+                            bubbles.forEach(bubble => {
+                                if (bubble.userData.category === catName) {
+                                    bubble.userData.isDeselected = !isActive;
+                                    bubble.userData.targetOpacity = isActive ? 0.9 : 0.3;
+                                    bubble.userData.targetScale = isActive ? 1 : 0.5;
+                                }
+                            });
                         }
                     });
                     return true; // Successfully loaded from hash
