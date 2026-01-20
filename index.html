@@ -124,6 +124,36 @@
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
+        #info-panel .panel-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #info-panel .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+
+        #info-panel .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        #info-panel .nav-counter {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
         #info-panel .spectrum {
             margin-top: 16px;
         }
@@ -179,7 +209,7 @@
             top: 20px;
             left: 20px;
             z-index: 100;
-            max-width: 400px;
+            max-width: 500px;
         }
 
         #header h1 {
@@ -189,6 +219,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            white-space: nowrap;
         }
 
         #header p {
@@ -199,9 +230,8 @@
 
         #score-panel {
             position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 20px;
+            right: 20px;
             background: rgba(15, 23, 42, 0.95);
             padding: 16px 32px;
             border-radius: 12px;
@@ -237,6 +267,7 @@
         #score-panel .score-fill {
             height: 100%;
             background: linear-gradient(90deg, #ef4444, #eab308, #22c55e);
+            background-size: 200px 100%; /* Fixed gradient size to match bar width */
             border-radius: 3px;
             transition: width 0.3s ease;
         }
@@ -348,6 +379,43 @@
             filter: brightness(1.1);
         }
 
+        .category-tooltip {
+            position: fixed;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 200;
+            max-width: 280px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .category-tooltip.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .category-tooltip h4 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .category-tooltip p {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .category-tooltip .items-list {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
             #header {
@@ -371,8 +439,9 @@
             }
 
             #score-panel {
-                top: auto;
                 bottom: 70px;
+                right: 50%;
+                transform: translateX(50%);
                 padding: 12px 24px;
             }
 
@@ -503,7 +572,18 @@
 
     <div class="category-filter" id="category-filter"></div>
 
+    <div class="category-tooltip" id="category-tooltip">
+        <h4 id="tooltip-title"></h4>
+        <p id="tooltip-description"></p>
+        <div class="items-list" id="tooltip-items"></div>
+    </div>
+
     <div id="info-panel">
+        <div class="panel-nav" id="panel-nav">
+            <button class="nav-btn" id="prev-btn">← Previous</button>
+            <span class="nav-counter" id="nav-counter">1 / 20</span>
+            <button class="nav-btn" id="next-btn">Next →</button>
+        </div>
         <h2 id="panel-title">Select a bubble</h2>
         <div class="category-badge" id="panel-category"></div>
         <p class="description" id="panel-description"></p>
@@ -542,7 +622,8 @@
     <div id="citation">
         Based on: Elsherif, M. M., et al. (2022). Bridging Neurodiversity and Open Scholarship.<br>
         <a href="https://doi.org/10.31222/osf.io/k7a9p" target="_blank">https://doi.org/10.31222/osf.io/k7a9p</a><br>
-        Adapted from Sylvia Duckworth's Wheel of Privilege
+        Adapted from Sylvia Duckworth's Wheel of Privilege<br>
+        <a href="https://ukrio.org" target="_blank">UK Research Integrity Office (UKRIO)</a>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -784,15 +865,44 @@
             }
         };
 
-        // Category colors and positions
+        // Category colors, positions, and descriptions
+        // Colors based on original Wheel of Privilege diagram
         const categories = {
-            "Living and Culture": { color: "#f472b6", angle: 0 },
-            "Caregiving": { color: "#a78bfa", angle: 51.4 },
-            "Education and Career": { color: "#60a5fa", angle: 102.8 },
-            "Gender and Sexuality": { color: "#fb923c", angle: 154.2 },
-            "Socioeconomic": { color: "#22d3d1", angle: 205.6 },
-            "Health and Wellbeing": { color: "#4ade80", angle: 257 },
-            "Childhood and Development": { color: "#fbbf24", angle: 308.4 }
+            "Living and Culture": {
+                color: "#e91e63", // Pink/Magenta
+                angle: 0,
+                description: "Factors related to cultural background, identity, and lived experience in society."
+            },
+            "Caregiving": {
+                color: "#9c27b0", // Purple
+                angle: 51.4,
+                description: "Responsibilities for caring for others that can impact time and energy available for academic work."
+            },
+            "Education and Career": {
+                color: "#3f51b5", // Indigo/Blue
+                angle: 102.8,
+                description: "Formal educational background, career stage, and access to academic resources and networks."
+            },
+            "Gender and Sexuality": {
+                color: "#ff9800", // Orange
+                angle: 154.2,
+                description: "Gender identity and sexual orientation, which affect representation and experiences in academia."
+            },
+            "Socioeconomic": {
+                color: "#009688", // Teal
+                angle: 205.6,
+                description: "Current financial status and access to material resources that enable academic participation."
+            },
+            "Health and Wellbeing": {
+                color: "#4caf50", // Green
+                angle: 257,
+                description: "Physical and mental health factors that affect ability to participate fully in academic life."
+            },
+            "Childhood and Development": {
+                color: "#ffc107", // Amber/Yellow
+                angle: 308.4,
+                description: "Early life experiences that shape educational opportunities and cultural capital."
+            }
         };
 
         // Ring radii - inner is most privileged (1.5 unit spacing)
@@ -822,7 +932,10 @@
             }
         }
 
-        camera.position.z = getOptimalCameraZ();
+        camera.position.z = getOptimalCameraZ() * 0.9; // Slight zoom in
+
+        // Set initial rotation (45° = π/4 radians)
+        scene.rotation.z = Math.PI / 4;
 
         // Raycaster for hover detection
         const raycaster = new THREE.Raycaster();
@@ -837,17 +950,7 @@
         let draggedBubble = null;
         let previousMousePosition = { x: 0, y: 0 };
         let rotationVelocity = { x: 0, y: 0 };
-
-        // Create central sphere
-        const centerGeometry = new THREE.SphereGeometry(2, 64, 64);
-        const centerMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1e293b,
-            transparent: true,
-            opacity: 0.9,
-            shininess: 100
-        });
-        const centerSphere = new THREE.Mesh(centerGeometry, centerMaterial);
-        scene.add(centerSphere);
+        let dragRadiusOffset = 0; // Offset between click point and bubble center radius
 
         // Create concentric rings
         const ringColors = { inner: 0x22c55e, middle: 0xeab308, outer: 0xef4444 };
@@ -867,13 +970,24 @@
         function createTextSprite(text, color) {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            canvas.width = 256;
+            canvas.width = 512;
             canvas.height = 64;
 
             context.fillStyle = 'transparent';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
-            context.font = 'bold 24px Segoe UI, sans-serif';
+            // Measure text and adjust font size if needed
+            let fontSize = 24;
+            context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
+            let textWidth = context.measureText(text).width;
+
+            // Scale down font if text is too wide (leave 20px padding)
+            const maxWidth = canvas.width - 20;
+            if (textWidth > maxWidth) {
+                fontSize = Math.floor(fontSize * (maxWidth / textWidth));
+                context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
+            }
+
             context.textAlign = 'center';
             context.textBaseline = 'middle';
 
@@ -895,18 +1009,18 @@
             });
 
             const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(2, 0.5, 1);
+            sprite.scale.set(4, 0.5, 1); // Wider sprite for longer labels
             sprite.renderOrder = 999;
 
             return sprite;
         }
 
         // Create bubble with label
-        function createBubble(name, data, positionIndex, totalInCategory) {
+        // globalIndex is used to equally space all 20 bubbles
+        function createBubble(name, data, globalIndex, totalBubbles) {
             const categoryInfo = categories[data.category];
-            const baseAngle = (categoryInfo.angle * Math.PI) / 180;
-            const angleSpread = (360 / 7) * Math.PI / 180;
-            const angle = baseAngle + (positionIndex - (totalInCategory - 1) / 2) * (angleSpread / Math.max(totalInCategory, 1) * 0.8);
+            // Equally space all bubbles: 360° / 20 = 18° each
+            const angle = (globalIndex / totalBubbles) * Math.PI * 2;
 
             // All bubbles start on inner ring (most privileged)
             const radius = ringRadii.inner;
@@ -946,11 +1060,18 @@
             bubble.add(glow);
             bubble.userData.glow = glow;
 
-            // Add text label
+            // Add text label (name above bubble)
             const label = createTextSprite(name, categoryInfo.color);
             label.position.set(0, 0.8, 0);
             bubble.add(label);
             bubble.userData.label = label;
+
+            // Add status label (current position below bubble)
+            const statusLabel = createTextSprite(data.spectrum.inner, categoryInfo.color);
+            statusLabel.position.set(0, -0.8, 0);
+            statusLabel.scale.set(3, 0.4, 1); // Slightly smaller than name label
+            bubble.add(statusLabel);
+            bubble.userData.statusLabel = statusLabel;
 
             scene.add(bubble);
             bubbles.push(bubble);
@@ -958,28 +1079,57 @@
             return bubble;
         }
 
-        // Group and create bubbles
-        const identitiesByCategory = {};
-        Object.entries(identityData).forEach(([name, data]) => {
-            if (!identitiesByCategory[data.category]) {
-                identitiesByCategory[data.category] = [];
-            }
-            identitiesByCategory[data.category].push({ name, data });
+        // Create all bubbles with equal spacing
+        const allIdentities = Object.entries(identityData);
+        const totalBubbles = allIdentities.length;
+
+        // Sort by category to keep category grouping, then create with equal angular spacing
+        const categoryOrder = Object.keys(categories);
+        allIdentities.sort((a, b) => {
+            const catAIndex = categoryOrder.indexOf(a[1].category);
+            const catBIndex = categoryOrder.indexOf(b[1].category);
+            return catAIndex - catBIndex;
         });
 
-        Object.entries(identitiesByCategory).forEach(([category, identities]) => {
-            identities.forEach((identity, index) => {
-                createBubble(identity.name, identity.data, index, identities.length);
-            });
+        allIdentities.forEach(([name, data], globalIndex) => {
+            createBubble(name, data, globalIndex, totalBubbles);
         });
 
-        // Create category filter buttons
+        // Create category filter buttons with tooltip
         const filterContainer = document.getElementById('category-filter');
+        const tooltip = document.getElementById('category-tooltip');
+        const tooltipTitle = document.getElementById('tooltip-title');
+        const tooltipDescription = document.getElementById('tooltip-description');
+        const tooltipItems = document.getElementById('tooltip-items');
+
+        function showCategoryTooltip(name, info, btn) {
+            tooltipTitle.textContent = name;
+            tooltipTitle.style.color = info.color;
+            tooltipDescription.textContent = info.description;
+
+            // Get items in this category
+            const items = Object.keys(identityData).filter(k => identityData[k].category === name);
+            tooltipItems.textContent = 'Includes: ' + items.join(', ');
+
+            // Position tooltip
+            const rect = btn.getBoundingClientRect();
+            tooltip.style.left = (rect.right + 10) + 'px';
+            tooltip.style.top = rect.top + 'px';
+
+            tooltip.classList.add('visible');
+        }
+
+        function hideCategoryTooltip() {
+            tooltip.classList.remove('visible');
+        }
+
         Object.entries(categories).forEach(([name, info]) => {
             const btn = document.createElement('button');
             btn.className = 'category-btn active';
             btn.style.backgroundColor = info.color;
             btn.textContent = name;
+
+            // Click to toggle visibility
             btn.addEventListener('click', () => {
                 btn.classList.toggle('active');
                 const isActive = btn.classList.contains('active');
@@ -989,6 +1139,11 @@
                     }
                 });
             });
+
+            // Hover to show tooltip
+            btn.addEventListener('mouseenter', () => showCategoryTooltip(name, info, btn));
+            btn.addEventListener('mouseleave', hideCategoryTooltip);
+
             filterContainer.appendChild(btn);
         });
 
@@ -1008,9 +1163,47 @@
             bubbles.forEach(b => {
                 total += b.userData.points;
             });
-            const maxScore = bubbles.length * 3;
+            const minScore = bubbles.length * 1; // 20 (all outer ring)
+            const maxScore = bubbles.length * 3; // 60 (all inner ring)
             document.getElementById('score-value').textContent = total;
-            document.getElementById('score-fill').style.width = (total / maxScore * 100) + '%';
+            // Normalize: 20 = 0%, 60 = 100%
+            const percentage = ((total - minScore) / (maxScore - minScore)) * 100;
+            document.getElementById('score-fill').style.width = percentage + '%';
+        }
+
+        // Update status label sprite texture
+        function updateStatusLabel(bubble, text) {
+            if (!bubble.userData.statusLabel) return;
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 512;
+            canvas.height = 64;
+
+            context.fillStyle = 'transparent';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Measure and adjust font size for long text
+            let fontSize = 20;
+            context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
+            let textWidth = context.measureText(text).width;
+            const maxWidth = canvas.width - 20;
+            if (textWidth > maxWidth) {
+                fontSize = Math.floor(fontSize * (maxWidth / textWidth));
+                context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
+            }
+
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = 'rgba(0,0,0,0.8)';
+            context.fillText(text, canvas.width / 2 + 1, canvas.height / 2 + 1);
+            context.fillStyle = 'rgba(255,255,255,0.9)';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            bubble.userData.statusLabel.material.map.dispose();
+            bubble.userData.statusLabel.material.map = texture;
+            bubble.userData.statusLabel.material.needsUpdate = true;
         }
 
         // Move bubble to ring
@@ -1024,6 +1217,11 @@
                 y: Math.sin(angle) * radius,
                 z: 0
             };
+
+            // Update status label with current spectrum text
+            const statusText = bubble.userData.spectrum[ringName];
+            updateStatusLabel(bubble, statusText);
+
             updateScore();
             if (lockedBubble === bubble) {
                 updateInfoPanel(bubble);
@@ -1038,7 +1236,7 @@
             document.getElementById('panel-title').textContent = data.name;
             const categoryBadge = document.getElementById('panel-category');
             categoryBadge.textContent = data.category;
-            categoryBadge.style.backgroundColor = data.categoryColor;
+            categoryBadge.style.backgroundColor = categories[data.category].color;
             document.getElementById('panel-description').textContent = data.description;
 
             const ukLawDiv = document.getElementById('panel-uk-law');
@@ -1072,12 +1270,38 @@
                 });
             });
 
+            // Update navigation counter
+            const currentIndex = bubbles.indexOf(bubble);
+            document.getElementById('nav-counter').textContent = `${currentIndex + 1} / ${bubbles.length}`;
+
             panel.classList.add('visible');
         }
 
         function hideInfoPanel() {
             document.getElementById('info-panel').classList.remove('visible');
         }
+
+        // Navigation button handlers
+        function navigateToBubble(direction) {
+            if (!lockedBubble) return;
+            const currentIndex = bubbles.indexOf(lockedBubble);
+            let newIndex = currentIndex + direction;
+            // Wrap around
+            if (newIndex < 0) newIndex = bubbles.length - 1;
+            if (newIndex >= bubbles.length) newIndex = 0;
+            lockedBubble = bubbles[newIndex];
+            updateInfoPanel(lockedBubble);
+        }
+
+        document.getElementById('prev-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigateToBubble(-1);
+        });
+
+        document.getElementById('next-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigateToBubble(1);
+        });
 
         // Mouse events
         container.addEventListener('mousedown', (e) => {
@@ -1090,6 +1314,16 @@
                 isDraggingBubble = true;
                 draggedBubble = intersects[0].object;
                 draggedBubble.userData.targetScale = 1.3;
+
+                // Calculate offset: difference between click position radius and bubble radius
+                const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+                vector.unproject(camera);
+                const dir = vector.sub(camera.position).normalize();
+                const distance = -camera.position.z / dir.z;
+                const clickPos = camera.position.clone().add(dir.multiplyScalar(distance));
+                const clickRadius = Math.sqrt(clickPos.x * clickPos.x + clickPos.y * clickPos.y);
+                const bubbleRadius = Math.sqrt(draggedBubble.position.x * draggedBubble.position.x + draggedBubble.position.y * draggedBubble.position.y);
+                dragRadiusOffset = bubbleRadius - clickRadius;
             } else {
                 isDragging = true;
             }
@@ -1131,7 +1365,8 @@
                 const pos = camera.position.clone().add(dir.multiplyScalar(distance));
 
                 // Keep bubble at its angle, just change radius
-                const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+                // Apply offset so bubble doesn't jump to cursor
+                const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + dragRadiusOffset;
                 const clampedDist = Math.max(ringRadii.inner - 1, Math.min(ringRadii.outer + 1, currentDist));
                 const angle = draggedBubble.userData.angle;
 
@@ -1246,9 +1481,12 @@
                 const time = Date.now() * 0.001;
                 bubble.position.z = Math.sin(time + index) * 0.1;
 
-                // Make label face camera
+                // Make labels face camera
                 if (bubble.userData.label) {
                     bubble.userData.label.quaternion.copy(camera.quaternion);
+                }
+                if (bubble.userData.statusLabel) {
+                    bubble.userData.statusLabel.quaternion.copy(camera.quaternion);
                 }
             });
 
@@ -1263,8 +1501,90 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Initialize
+        // localStorage persistence
+        const STORAGE_KEY = 'wheelOfPrivilege_selections';
+
+        function saveSelections() {
+            const selections = {};
+            bubbles.forEach(b => {
+                selections[b.userData.name] = b.userData.currentRing;
+            });
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(selections));
+            } catch (e) {
+                console.warn('Could not save to localStorage:', e);
+            }
+        }
+
+        function loadSelections() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const selections = JSON.parse(saved);
+                    bubbles.forEach(b => {
+                        const ring = selections[b.userData.name];
+                        if (ring && ['inner', 'middle', 'outer'].includes(ring)) {
+                            moveBubbleToRing(b, ring);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not load from localStorage:', e);
+            }
+        }
+
+        // URL hash encoding for shareable links
+        const ringToChar = { inner: 'i', middle: 'm', outer: 'o' };
+        const charToRing = { 'i': 'inner', 'm': 'middle', 'o': 'outer' };
+
+        function getSelectionsHash() {
+            // Create a compact string: one char per bubble in order
+            return bubbles.map(b => ringToChar[b.userData.currentRing]).join('');
+        }
+
+        function updateUrlHash() {
+            const hash = getSelectionsHash();
+            history.replaceState(null, '', '#' + hash);
+        }
+
+        function loadFromUrlHash() {
+            const hash = window.location.hash.slice(1); // Remove '#'
+            if (hash && hash.length === bubbles.length) {
+                let valid = true;
+                for (let i = 0; i < hash.length; i++) {
+                    if (!charToRing[hash[i]]) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    bubbles.forEach((b, i) => {
+                        const ring = charToRing[hash[i]];
+                        if (ring) {
+                            // Use original to avoid recursive hash updates
+                            originalMoveBubbleToRing(b, ring);
+                        }
+                    });
+                    return true; // Successfully loaded from hash
+                }
+            }
+            return false; // No valid hash
+        }
+
+        // Update moveBubbleToRing to save after each change
+        const originalMoveBubbleToRing = moveBubbleToRing;
+        moveBubbleToRing = function(bubble, ringName) {
+            originalMoveBubbleToRing(bubble, ringName);
+            saveSelections();
+            updateUrlHash();
+        };
+
+        // Initialize - URL hash takes priority over localStorage
+        if (!loadFromUrlHash()) {
+            loadSelections();
+        }
         updateScore();
+        updateUrlHash(); // Set initial hash
         animate();
     </script>
 </body>
