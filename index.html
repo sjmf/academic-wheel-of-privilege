@@ -985,7 +985,6 @@
 
         // Store bubble meshes
         const bubbles = [];
-        let hoveredBubble = null;
         let lockedBubble = null;
         let isDragging = false;
         let isDraggingBubble = false;
@@ -1253,6 +1252,23 @@
         pointLight2.position.set(-10, -10, 10);
         scene.add(pointLight2);
 
+        // Utility functions for color conversion
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+        
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = Math.round(x).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
         // Calculate and update score
         function updateScore() {
             let total = 0;
@@ -1272,23 +1288,6 @@
             const colorMin = getComputedStyle(root).getPropertyValue('--color-score-min').trim();
             const colorMid = getComputedStyle(root).getPropertyValue('--color-score-mid').trim();
             const colorMax = getComputedStyle(root).getPropertyValue('--color-score-max').trim();
-            
-            // Parse hex colors to RGB
-            function hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : null;
-            }
-            
-            function rgbToHex(r, g, b) {
-                return '#' + [r, g, b].map(x => {
-                    const hex = Math.round(x).toString(16);
-                    return hex.length === 1 ? '0' + hex : hex;
-                }).join('');
-            }
             
             const rgb1 = hexToRgb(colorMin);
             const rgb2 = hexToRgb(colorMid);
@@ -1348,7 +1347,10 @@
             context.fillText(text, canvas.width / 2, canvas.height / 2);
 
             const texture = new THREE.CanvasTexture(canvas);
-            bubble.userData.statusLabel.material.map.dispose();
+            // Safely dispose of old texture if it exists
+            if (bubble.userData.statusLabel.material.map) {
+                bubble.userData.statusLabel.material.map.dispose();
+            }
             bubble.userData.statusLabel.material.map = texture;
             bubble.userData.statusLabel.material.needsUpdate = true;
         }
@@ -1411,7 +1413,8 @@
 
             // Add click handlers to spectrum items
             spectrumItems.querySelectorAll('.spectrum-item').forEach(item => {
-                item.addEventListener('click', () => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const ring = item.dataset.ring;
                     moveBubbleToRing(bubble, ring);
                 });
@@ -1572,7 +1575,7 @@
             rotationVelocity.x *= 0.95;
             rotationVelocity.y *= 0.95;
 
-            if (!isDragging && !isDraggingBubble && !hoveredBubble && !lockedBubble &&
+            if (!isDragging && !isDraggingBubble && !lockedBubble &&
                 Math.abs(rotationVelocity.x) < 0.001 && Math.abs(rotationVelocity.y) < 0.001) {
                 scene.rotation.z += 0.0005;
             }
