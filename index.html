@@ -12,6 +12,12 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --color-score-min: #ef4444;
+            --color-score-mid: #eab308;
+            --color-score-max: #22c55e;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -240,10 +246,8 @@
         #score-panel .score-value {
             font-size: 2.5rem;
             font-weight: 700;
-            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #ef4444;
+            transition: color 0.3s ease;
         }
 
         #score-panel .score-label {
@@ -1172,9 +1176,59 @@
             const minScore = bubbles.length * 1; // 20 (all outer ring)
             const maxScore = bubbles.length * 3; // 60 (all inner ring)
             document.getElementById('score-value').textContent = total;
+            
             // Normalize: 20 = 0%, 60 = 100%
             const percentage = ((total - minScore) / (maxScore - minScore)) * 100;
             document.getElementById('score-fill').style.width = percentage + '%';
+            
+            // Get colors from CSS variables
+            const root = document.documentElement;
+            const colorMin = getComputedStyle(root).getPropertyValue('--color-score-min').trim();
+            const colorMid = getComputedStyle(root).getPropertyValue('--color-score-mid').trim();
+            const colorMax = getComputedStyle(root).getPropertyValue('--color-score-max').trim();
+            
+            // Parse hex colors to RGB
+            function hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            }
+            
+            function rgbToHex(r, g, b) {
+                return '#' + [r, g, b].map(x => {
+                    const hex = Math.round(x).toString(16);
+                    return hex.length === 1 ? '0' + hex : hex;
+                }).join('');
+            }
+            
+            const rgb1 = hexToRgb(colorMin);
+            const rgb2 = hexToRgb(colorMid);
+            const rgb3 = hexToRgb(colorMax);
+            
+            // Calculate gradient color based on score
+            const normalizedScore = (total - minScore) / (maxScore - minScore); // 0 to 1
+            let color;
+            
+            if (normalizedScore <= 0.5) {
+                // Min to Mid (0% to 50%)
+                const t = normalizedScore * 2; // 0 to 1 for this segment
+                const r = rgb1.r + (rgb2.r - rgb1.r) * t;
+                const g = rgb1.g + (rgb2.g - rgb1.g) * t;
+                const b = rgb1.b + (rgb2.b - rgb1.b) * t;
+                color = rgbToHex(r, g, b);
+            } else {
+                // Mid to Max (50% to 100%)
+                const t = (normalizedScore - 0.5) * 2; // 0 to 1 for this segment
+                const r = rgb2.r + (rgb3.r - rgb2.r) * t;
+                const g = rgb2.g + (rgb3.g - rgb2.g) * t;
+                const b = rgb2.b + (rgb3.b - rgb2.b) * t;
+                color = rgbToHex(r, g, b);
+            }
+            
+            document.getElementById('score-value').style.color = color;
         }
 
         // Update status label sprite texture
