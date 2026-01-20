@@ -617,9 +617,16 @@
                 display: none;
             }
 
+            /* Hide category tooltip on mobile - it interferes with touch */
+            .category-tooltip {
+                display: none !important;
+            }
+
             /* Ensure container doesn't block category bar touch events */
             #container {
                 pointer-events: auto;
+                /* Shrink container to not overlap category bar */
+                height: calc(100vh - 60px);
             }
         }
 
