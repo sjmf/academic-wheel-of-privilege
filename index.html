@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Academic Wheel of Privilege - Interactive Visualisation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -24,6 +24,11 @@
             --cat-socioeconomic: #22d3d1;
             --cat-health-and-wellbeing: #4ade80;
             --cat-childhood-and-development: #fbbf24;
+        }
+
+        html, body {
+            touch-action: none;
+            overscroll-behavior: none;
         }
 
         body {
@@ -520,6 +525,8 @@
                 z-index: 100;
                 /* Ensure touch events work */
                 pointer-events: auto;
+                /* Allow horizontal scrolling on this element */
+                touch-action: pan-x;
             }
 
             .category-btn {
