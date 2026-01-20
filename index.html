@@ -614,10 +614,11 @@
     </div>
 
     <div id="citation">
-        Based on: Elsherif, M. M., et al. (2022). Bridging Neurodiversity and Open Scholarship.<br>
+        Based on: <a href="https://ukrio.org/ukrio-resources/equality-diversity-and-inclusion/academic-wheel-of-privilege/" target="_blank">Academic Wheel of Privilege</a> (UKRIO Resource)<br> Elsherif, M. M., et al. (2022).
+        Bridging Neurodiversity and Open Scholarship.<br>
         <a href="https://doi.org/10.31222/osf.io/k7a9p" target="_blank">https://doi.org/10.31222/osf.io/k7a9p</a><br>
-        Adapted from Sylvia Duckworth's Wheel of Privilege<br>
-        <a href="https://ukrio.org" target="_blank">UK Research Integrity Office (UKRIO)</a>
+        Adapted from Sylvia Duckworth's Wheel of Privilege <br>
+        Visualisation by <a href="https://github.com/sjmf">@sjmf</a>
     </div>
 
     <script>
@@ -982,7 +983,7 @@
             }
 
             context.textAlign = 'center';
-            context.textBaseline = 'middle';
+            context.textBaseline = 'middle'; 
 
             // Text shadow for readability
             context.fillStyle = 'rgba(0,0,0,0.8)';
@@ -1177,7 +1178,7 @@
             context.fillRect(0, 0, canvas.width, canvas.height);
 
             // Measure and adjust font size for long text
-            let fontSize = 20;
+            let fontSize = 32;
             context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
             let textWidth = context.measureText(text).width;
             const maxWidth = canvas.width - 20;
