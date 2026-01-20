@@ -971,13 +971,13 @@
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             canvas.width = 512;
-            canvas.height = 64;
+            canvas.height = 80;
 
             context.fillStyle = 'transparent';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
             // Measure text and adjust font size if needed
-            let fontSize = 24;
+            let fontSize = 32; // Increased from 24
             context.font = `bold ${fontSize}px Segoe UI, sans-serif`;
             let textWidth = context.measureText(text).width;
 
@@ -1009,7 +1009,7 @@
             });
 
             const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(4, 0.5, 1); // Wider sprite for longer labels
+            sprite.scale.set(5, 0.8, 1); // Larger sprite for bigger font
             sprite.renderOrder = 999;
 
             return sprite;
@@ -1062,14 +1062,14 @@
 
             // Add text label (name above bubble)
             const label = createTextSprite(name, categoryInfo.color);
-            label.position.set(0, 0.8, 0);
+            label.position.set(0, 1.0, 0);
             bubble.add(label);
             bubble.userData.label = label;
 
             // Add status label (current position below bubble)
             const statusLabel = createTextSprite(data.spectrum.inner, categoryInfo.color);
-            statusLabel.position.set(0, -0.8, 0);
-            statusLabel.scale.set(3, 0.4, 1); // Slightly smaller than name label
+            statusLabel.position.set(0, -1.0, 0);
+            statusLabel.scale.set(4, 0.6, 1); // Slightly smaller than name label
             bubble.add(statusLabel);
             bubble.userData.statusLabel = statusLabel;
 
