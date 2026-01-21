@@ -306,6 +306,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
     grabBar.addEventListener('touchstart', (e) => {
         if (e.touches.length === 0) return;
         e.preventDefault();
+        e.stopPropagation();
         isDragging = true;
         dragStartY = e.touches[0].clientY;
         startHeight = panel.offsetHeight;
@@ -314,6 +315,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
 
     grabBar.addEventListener('touchmove', (e) => {
         if (!isDragging || e.touches.length === 0) return;
+        e.stopPropagation();
         e.preventDefault();
 
         const deltaY = dragStartY - e.touches[0].clientY;
@@ -323,6 +325,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
 
     grabBar.addEventListener('touchend', (e) => {
         if (!isDragging || e.changedTouches.length === 0) return;
+        e.stopPropagation();
         isDragging = false;
         panel.style.transition = '';
 
