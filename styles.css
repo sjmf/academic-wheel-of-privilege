@@ -667,7 +667,8 @@ body {
         border-radius: 16px 16px 0 0;
         padding: 20px;
         padding-top: 28px;
-        max-height: 60vh;
+        height: 60vh;
+        max-height: 90vh;
         overflow-y: auto;
         z-index: 150;
         pointer-events: auto;
@@ -769,7 +770,8 @@ body {
         left: 12px;
         right: 12px;
         width: auto;
-        max-height: 60vh;
+        height: 60vh;
+        max-height: 90vh;
         border-radius: 16px 16px 0 0;
         transform: translateY(100%);
         padding: 20px;
@@ -790,6 +792,26 @@ body {
 
     #info-panel.visible {
         transform: translateY(0);
+    }
+
+    #info-panel.expanded {
+        max-height: calc(100vh - 68px);
+        transition: max-height 0.3s ease;
+    }
+
+    /* Grab bar for dragging/dismissing */
+    .grab-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 28px;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .grab-bar:active {
+        cursor: grabbing;
     }
 
     /* Hide default panel on mobile */

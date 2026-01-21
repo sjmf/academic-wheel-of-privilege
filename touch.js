@@ -1,0 +1,368 @@
+// Touch event handlers for mobile
+// This file handles all touch interactions for the Academic Wheel of Privilege
+
+// Touch state variables for wheel interaction
+let touchStartDistance = 0;
+let touchStartPosition = { x: 0, y: 0 };
+let isTouchDragging = false;
+let isTouchDraggingBubble = false;
+let touchDraggedBubble = null;
+let touchDragRadiusOffset = 0;
+
+function getTouchDistance(touches) {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getTouchCenter(touches) {
+    if (touches.length < 2) {
+        return { x: touches[0].clientX, y: touches[0].clientY };
+    }
+    return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+}
+
+// Wheel touch handlers (requires: container, renderer, mouse, camera, raycaster, bubbles, CFG, ringRadii, moveBubbleToRing, lockedBubble, hideInfoPanel, updateInfoPanel, rotationVelocity)
+container.addEventListener('touchstart', (e) => {
+    // Don't prevent default for elements that need it (category buttons etc)
+    if (e.target !== renderer.domElement) return;
+
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+    touchStartPosition = { x: touch.clientX, y: touch.clientY };
+
+    if (e.touches.length === 2) {
+        // Pinch zoom start
+        touchStartDistance = getTouchDistance(e.touches);
+    } else {
+        // Single finger - check for bubble drag or rotation
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(bubbles);
+
+        if (intersects.length > 0) {
+            isTouchDraggingBubble = true;
+            touchDraggedBubble = intersects[0].object;
+            touchDraggedBubble.userData.targetScale = CFG.DRAG_SCALE;
+
+            // Calculate offset
+            const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
+            vector.unproject(camera);
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.z / dir.z;
+            const clickPos = camera.position.clone().add(dir.multiplyScalar(distance));
+            const clickRadius = Math.sqrt(clickPos.x * clickPos.x + clickPos.y * clickPos.y);
+            const bubbleRadius = Math.sqrt(touchDraggedBubble.position.x * touchDraggedBubble.position.x + touchDraggedBubble.position.y * touchDraggedBubble.position.y);
+            touchDragRadiusOffset = bubbleRadius - clickRadius;
+        } else {
+            isTouchDragging = true;
+        }
+    }
+}, { passive: false });
+
+container.addEventListener('touchmove', (e) => {
+    if (e.target !== renderer.domElement) return;
+    e.preventDefault();
+
+    if (e.touches.length === 2) {
+        // Pinch zoom
+        const newDistance = getTouchDistance(e.touches);
+        if (touchStartDistance > 0) {
+            const delta = touchStartDistance - newDistance;
+            camera.position.z += delta * CFG.TOUCH_ZOOM_SENSITIVITY;
+            camera.position.z = Math.max(CFG.CAMERA_Z_MIN, Math.min(CFG.CAMERA_Z_MAX, camera.position.z));
+        }
+        touchStartDistance = newDistance;
+    } else if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+        if (isTouchDraggingBubble && touchDraggedBubble) {
+            // Drag bubble between rings
+            const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
+            vector.unproject(camera);
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.z / dir.z;
+            const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+
+            const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + touchDragRadiusOffset;
+            const clampedDist = Math.max(ringRadii.inner - CFG.RING_PADDING, Math.min(ringRadii.outer + CFG.RING_PADDING, currentDist));
+            const angle = touchDraggedBubble.userData.angle;
+
+            touchDraggedBubble.position.x = Math.cos(angle) * clampedDist;
+            touchDraggedBubble.position.y = Math.sin(angle) * clampedDist;
+        } else if (isTouchDragging) {
+            // Rotate wheel
+            const deltaMove = {
+                x: touch.clientX - touchStartPosition.x,
+                y: touch.clientY - touchStartPosition.y
+            };
+            rotationVelocity.x = deltaMove.y * CFG.TOUCH_ROTATION_SENSITIVITY;
+            rotationVelocity.y = -deltaMove.x * CFG.TOUCH_ROTATION_SENSITIVITY;
+            touchStartPosition = { x: touch.clientX, y: touch.clientY };
+        }
+    }
+}, { passive: false });
+
+container.addEventListener('touchend', (e) => {
+    if (isTouchDraggingBubble && touchDraggedBubble) {
+        // Snap bubble to nearest ring
+        const pos = touchDraggedBubble.position;
+        const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+
+        let targetRing = 'inner';
+        if (dist > (ringRadii.inner + ringRadii.middle) / 2) {
+            if (dist > (ringRadii.middle + ringRadii.outer) / 2) {
+                targetRing = 'outer';
+            } else {
+                targetRing = 'middle';
+            }
+        }
+
+        moveBubbleToRing(touchDraggedBubble, targetRing);
+        touchDraggedBubble.userData.targetScale = CFG.DEFAULT_SCALE;
+
+        // If it was a tap (not much movement), select the bubble
+        if (e.changedTouches.length > 0) {
+            const touch = e.changedTouches[0];
+            const dx = Math.abs(touch.clientX - touchStartPosition.x);
+            const dy = Math.abs(touch.clientY - touchStartPosition.y);
+            if (dx < 10 && dy < 10) {
+                // It was a tap
+                if (lockedBubble === touchDraggedBubble) {
+                    lockedBubble = null;
+                    hideInfoPanel();
+                } else {
+                    lockedBubble = touchDraggedBubble;
+                    updateInfoPanel(touchDraggedBubble);
+                }
+            }
+        }
+
+        touchDraggedBubble = null;
+    } else if (isTouchDragging && e.changedTouches.length > 0) {
+        // Check if it was a tap to deselect
+        const touch = e.changedTouches[0];
+        const dx = Math.abs(touch.clientX - touchStartPosition.x);
+        const dy = Math.abs(touch.clientY - touchStartPosition.y);
+        if (dx < 10 && dy < 10) {
+            // Close mobile info panel if open
+            const mobilePanel = document.getElementById('mobile-info-panel');
+            const burger = document.getElementById('burger-menu');
+            if (mobilePanel.classList.contains('visible')) {
+                mobilePanel.classList.remove('visible');
+                burger.classList.remove('active');
+            }
+
+            // Check if tap was on a bubble to deselect
+            if (lockedBubble) {
+                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(bubbles);
+
+                if (intersects.length === 0) {
+                    lockedBubble = null;
+                    hideInfoPanel();
+                }
+            }
+        }
+    }
+
+    isTouchDragging = false;
+    isTouchDraggingBubble = false;
+    touchStartDistance = 0;
+});
+
+// Mobile burger menu toggle
+const burgerMenu = document.getElementById('burger-menu');
+const mobileInfoPanel = document.getElementById('mobile-info-panel');
+
+burgerMenu.addEventListener('click', (e) => {
+    e.stopPropagation();
+    mobileInfoPanel.classList.toggle('visible');
+    burgerMenu.classList.toggle('active');
+});
+
+// Close mobile info panel when tapping outside
+document.addEventListener('click', (e) => {
+    if (mobileInfoPanel.classList.contains('visible') &&
+        !mobileInfoPanel.contains(e.target) &&
+        !burgerMenu.contains(e.target)) {
+        mobileInfoPanel.classList.remove('visible');
+        burgerMenu.classList.remove('active');
+    }
+});
+
+// Swipe left/right on info panel for prev/next navigation
+const infoPanel = document.getElementById('info-panel');
+let infoPanelTouchStartX = 0;
+let infoPanelTouchStartY = 0;
+
+infoPanel.addEventListener('touchstart', (e) => {
+    infoPanelTouchStartX = e.touches[0].clientX;
+    infoPanelTouchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+infoPanel.addEventListener('touchend', (e) => {
+    if (!lockedBubble || e.changedTouches.length === 0) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - infoPanelTouchStartX;
+    const deltaY = touchEndY - infoPanelTouchStartY;
+
+    // Only trigger if horizontal swipe is dominant and significant
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        if (deltaX > 0) {
+            // Swipe right = previous
+            navigateToBubble(-1);
+        } else {
+            // Swipe left = next
+            navigateToBubble(1);
+        }
+    }
+
+    // Swipe down to dismiss (when scrolled to top)
+    if (deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && infoPanel.scrollTop <= 0) {
+        lockedBubble = null;
+        hideInfoPanel();
+        infoPanel.classList.remove('expanded');
+    }
+
+    // Swipe up to expand (when scrolled to bottom)
+    const isAtBottom = infoPanel.scrollHeight - infoPanel.scrollTop <= infoPanel.clientHeight + 5;
+    if (deltaY < -50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && isAtBottom) {
+        infoPanel.classList.add('expanded');
+    }
+}, { passive: true });
+
+// Mobile info panel (How to Use) swipe/drag handlers
+let mobilePanelTouchStartY = 0;
+
+mobileInfoPanel.addEventListener('touchstart', (e) => {
+    mobilePanelTouchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+mobileInfoPanel.addEventListener('touchend', (e) => {
+    if (e.changedTouches.length === 0) return;
+
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchEndY - mobilePanelTouchStartY;
+
+    // Swipe down to dismiss
+    if (deltaY > 50 && mobileInfoPanel.scrollTop <= 0) {
+        mobileInfoPanel.classList.remove('visible');
+        burgerMenu.classList.remove('active');
+    }
+}, { passive: true });
+
+// Grab bar handlers for info panel
+const infoPanelGrabBar = document.getElementById('info-panel-grab-bar');
+let infoPanelDragStartY = 0;
+let infoPanelStartHeight = 0;
+let isInfoPanelDragging = false;
+
+if (infoPanelGrabBar) {
+    infoPanelGrabBar.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isInfoPanelDragging = true;
+        infoPanelDragStartY = e.touches[0].clientY;
+        infoPanelStartHeight = infoPanel.offsetHeight;
+        infoPanel.style.transition = 'none';
+    }, { passive: false });
+
+    infoPanelGrabBar.addEventListener('touchmove', (e) => {
+        if (!isInfoPanelDragging) return;
+        e.preventDefault();
+
+        const deltaY = infoPanelDragStartY - e.touches[0].clientY;
+        const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, infoPanelStartHeight + deltaY));
+        infoPanel.style.maxHeight = newHeight + 'px';
+    }, { passive: false });
+
+    infoPanelGrabBar.addEventListener('touchend', (e) => {
+        if (!isInfoPanelDragging) return;
+        isInfoPanelDragging = false;
+        infoPanel.style.transition = '';
+
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchEndY - infoPanelDragStartY;
+        const totalDrag = Math.abs(deltaY);
+
+        // If it was a tap (minimal movement), dismiss
+        if (totalDrag < 10) {
+            lockedBubble = null;
+            hideInfoPanel();
+            infoPanel.classList.remove('expanded');
+            infoPanel.style.maxHeight = '';
+            return;
+        }
+
+        // If dragged down significantly, dismiss
+        if (deltaY > 80) {
+            lockedBubble = null;
+            hideInfoPanel();
+            infoPanel.classList.remove('expanded');
+            infoPanel.style.maxHeight = '';
+        }
+    });
+}
+
+// Grab bar handlers for mobile info panel (How to Use)
+const mobilePanelGrabBar = document.getElementById('mobile-panel-grab-bar');
+let isMobilePanelDragging = false;
+let mobilePanelDragStartY = 0;
+let mobilePanelStartHeight = 0;
+
+if (mobilePanelGrabBar) {
+    mobilePanelGrabBar.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isMobilePanelDragging = true;
+        mobilePanelDragStartY = e.touches[0].clientY;
+        mobilePanelStartHeight = mobileInfoPanel.offsetHeight;
+        mobileInfoPanel.style.transition = 'none';
+    }, { passive: false });
+
+    mobilePanelGrabBar.addEventListener('touchmove', (e) => {
+        if (!isMobilePanelDragging) return;
+        e.preventDefault();
+
+        const deltaY = mobilePanelDragStartY - e.touches[0].clientY;
+        const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, mobilePanelStartHeight + deltaY));
+        mobileInfoPanel.style.maxHeight = newHeight + 'px';
+    }, { passive: false });
+
+    mobilePanelGrabBar.addEventListener('touchend', (e) => {
+        if (!isMobilePanelDragging) return;
+        isMobilePanelDragging = false;
+        mobileInfoPanel.style.transition = '';
+
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchEndY - mobilePanelDragStartY;
+        const totalDrag = Math.abs(deltaY);
+
+        // If it was a tap (minimal movement), dismiss
+        if (totalDrag < 10) {
+            mobileInfoPanel.classList.remove('visible');
+            burgerMenu.classList.remove('active');
+            mobileInfoPanel.style.maxHeight = '';
+            return;
+        }
+
+        // If dragged down significantly, dismiss
+        if (deltaY > 80) {
+            mobileInfoPanel.classList.remove('visible');
+            burgerMenu.classList.remove('active');
+            mobileInfoPanel.style.maxHeight = '';
+        }
+    });
+}
