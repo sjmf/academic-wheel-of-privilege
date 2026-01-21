@@ -206,13 +206,22 @@ document.addEventListener('click', (e) => {
 const infoPanel = document.getElementById('info-panel');
 let infoPanelTouchStartX = 0;
 let infoPanelTouchStartY = 0;
+let infoPanelTouchStartedOnGrabBar = false;
 
 infoPanel.addEventListener('touchstart', (e) => {
     infoPanelTouchStartX = e.touches[0].clientX;
     infoPanelTouchStartY = e.touches[0].clientY;
+    // Check if touch started on grab bar
+    infoPanelTouchStartedOnGrabBar = e.target.closest('.grab-bar') !== null;
 }, { passive: true });
 
 infoPanel.addEventListener('touchend', (e) => {
+    // Skip swipe handling if touch started on grab bar (handled separately)
+    if (infoPanelTouchStartedOnGrabBar) {
+        infoPanelTouchStartedOnGrabBar = false;
+        return;
+    }
+
     if (!lockedBubble || e.changedTouches.length === 0) return;
 
     const touchEndX = e.changedTouches[0].clientX;
@@ -247,12 +256,21 @@ infoPanel.addEventListener('touchend', (e) => {
 
 // Mobile info panel (How to Use) swipe/drag handlers
 let mobilePanelTouchStartY = 0;
+let mobilePanelTouchStartedOnGrabBar = false;
 
 mobileInfoPanel.addEventListener('touchstart', (e) => {
     mobilePanelTouchStartY = e.touches[0].clientY;
+    // Check if touch started on grab bar
+    mobilePanelTouchStartedOnGrabBar = e.target.closest('.grab-bar') !== null;
 }, { passive: true });
 
 mobileInfoPanel.addEventListener('touchend', (e) => {
+    // Skip swipe handling if touch started on grab bar (handled separately)
+    if (mobilePanelTouchStartedOnGrabBar) {
+        mobilePanelTouchStartedOnGrabBar = false;
+        return;
+    }
+
     if (e.changedTouches.length === 0) return;
 
     const touchEndY = e.changedTouches[0].clientY;
@@ -286,7 +304,7 @@ if (infoPanelGrabBar) {
 
         const deltaY = infoPanelDragStartY - e.touches[0].clientY;
         const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, infoPanelStartHeight + deltaY));
-        infoPanel.style.maxHeight = newHeight + 'px';
+        infoPanel.style.height = newHeight + 'px';
     }, { passive: false });
 
     infoPanelGrabBar.addEventListener('touchend', (e) => {
@@ -303,17 +321,9 @@ if (infoPanelGrabBar) {
             lockedBubble = null;
             hideInfoPanel();
             infoPanel.classList.remove('expanded');
-            infoPanel.style.maxHeight = '';
-            return;
+            infoPanel.style.height = '';
         }
-
-        // If dragged down significantly, dismiss
-        if (deltaY > 80) {
-            lockedBubble = null;
-            hideInfoPanel();
-            infoPanel.classList.remove('expanded');
-            infoPanel.style.maxHeight = '';
-        }
+        // Otherwise keep the new height from dragging
     });
 }
 
@@ -338,7 +348,7 @@ if (mobilePanelGrabBar) {
 
         const deltaY = mobilePanelDragStartY - e.touches[0].clientY;
         const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, mobilePanelStartHeight + deltaY));
-        mobileInfoPanel.style.maxHeight = newHeight + 'px';
+        mobileInfoPanel.style.height = newHeight + 'px';
     }, { passive: false });
 
     mobilePanelGrabBar.addEventListener('touchend', (e) => {
@@ -354,15 +364,8 @@ if (mobilePanelGrabBar) {
         if (totalDrag < 10) {
             mobileInfoPanel.classList.remove('visible');
             burgerMenu.classList.remove('active');
-            mobileInfoPanel.style.maxHeight = '';
-            return;
+            mobileInfoPanel.style.height = '';
         }
-
-        // If dragged down significantly, dismiss
-        if (deltaY > 80) {
-            mobileInfoPanel.classList.remove('visible');
-            burgerMenu.classList.remove('active');
-            mobileInfoPanel.style.maxHeight = '';
-        }
+        // Otherwise keep the new height from dragging
     });
 }
