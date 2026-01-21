@@ -642,6 +642,8 @@ body {
         height: 28px;
         cursor: grab;
         touch-action: none;
+        pointer-events: auto;
+        z-index: 10;
     }
 
     .grab-bar:active {

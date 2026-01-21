@@ -299,7 +299,12 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
     let dragStartY = 0;
     let startHeight = 0;
 
+    // Ensure grab bar can receive touch events
+    grabBar.style.pointerEvents = 'auto';
+    grabBar.style.touchAction = 'none';
+
     grabBar.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 0) return;
         e.preventDefault();
         isDragging = true;
         dragStartY = e.touches[0].clientY;
@@ -308,7 +313,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
     }, { passive: false });
 
     grabBar.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
+        if (!isDragging || e.touches.length === 0) return;
         e.preventDefault();
 
         const deltaY = dragStartY - e.touches[0].clientY;
@@ -317,7 +322,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
     }, { passive: false });
 
     grabBar.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
+        if (!isDragging || e.changedTouches.length === 0) return;
         isDragging = false;
         panel.style.transition = '';
 
@@ -331,7 +336,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
             panel.style.height = '';
         }
         // Otherwise keep the new height from dragging
-    });
+    }, { passive: true });
 }
 
 // Set up grab bar for bubble info panel
