@@ -642,7 +642,7 @@ body {
         height: 28px;
         cursor: grab;
         touch-action: none;
-        pointer-events: auto;
+        pointer-events: auto !important;
         z-index: 10;
     }
 
