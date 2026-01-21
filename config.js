@@ -72,5 +72,18 @@ const CFG = {
     // Mobile-specific settings
     MOBILE_PANEL_OFFSET_Y: 5,  // How much to move wheel up when panel opens
     TOUCH_ZOOM_SENSITIVITY: 0.03,
-    TOUCH_ROTATION_SENSITIVITY: 0.008
+    TOUCH_ROTATION_SENSITIVITY: 0.008,
+
+    // Touch gesture thresholds
+    TOUCH_THRESHOLDS: {
+        TAP_MAX_DISTANCE: 10,
+        SWIPE_MIN_DISTANCE: 50,
+        SWIPE_ASPECT_RATIO: 1.5
+    },
+
+    // Mobile layout constants
+    MOBILE_LAYOUT: {
+        CATEGORY_BAR_HEIGHT: 68,
+        GRAB_BAR_TOUCH_TOLERANCE: 10
+    }
 };

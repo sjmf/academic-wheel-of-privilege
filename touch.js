@@ -2,22 +2,6 @@
 // This file handles all touch interactions for the Academic Wheel of Privilege
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const TOUCH_THRESHOLDS = {
-    TAP_MAX_DISTANCE: 10,
-    SWIPE_MIN_DISTANCE: 50,
-    SWIPE_ASPECT_RATIO: 1.5
-};
-
-const MOBILE_LAYOUT = {
-    MIN_PANEL_HEIGHT: () => window.innerHeight * 0.5,
-    CATEGORY_BAR_HEIGHT: 68,
-    GRAB_BAR_TOUCH_TOLERANCE: 10
-};
-
-// ============================================================================
 // STATE OBJECTS
 // ============================================================================
 
@@ -68,7 +52,7 @@ function getTouchCenter(touches) {
 /**
  * Check if a touch gesture is a tap (minimal movement)
  */
-function isTapGesture(startX, startY, endX, endY, threshold = TOUCH_THRESHOLDS.TAP_MAX_DISTANCE) {
+function isTapGesture(startX, startY, endX, endY, threshold = CFG.TOUCH_THRESHOLDS.TAP_MAX_DISTANCE) {
     const dx = Math.abs(endX - startX);
     const dy = Math.abs(endY - startY);
     return dx < threshold && dy < threshold;
@@ -77,7 +61,7 @@ function isTapGesture(startX, startY, endX, endY, threshold = TOUCH_THRESHOLDS.T
 /**
  * Analyze swipe gesture properties
  */
-function analyzeSwipeGesture(deltaX, deltaY, minDelta = TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE, aspectRatio = TOUCH_THRESHOLDS.SWIPE_ASPECT_RATIO) {
+function analyzeSwipeGesture(deltaX, deltaY, minDelta = CFG.TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE, aspectRatio = CFG.TOUCH_THRESHOLDS.SWIPE_ASPECT_RATIO) {
     const isHorizontal = Math.abs(deltaX) > minDelta && Math.abs(deltaX) > Math.abs(deltaY) * aspectRatio;
     const isVertical = Math.abs(deltaY) > minDelta && Math.abs(deltaY) > Math.abs(deltaX) * aspectRatio;
     return {
@@ -137,9 +121,16 @@ function detectGrabBarTouch(touchEvent, grabBarId) {
 }
 
 /**
+ * Get minimum panel height (50% of viewport height)
+ */
+function getMinPanelHeight() {
+    return window.innerHeight * 0.5;
+}
+
+/**
  * Check if panel is at minimum height (within tolerance)
  */
-function isAtMinHeight(panel, minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT()) {
+function isAtMinHeight(panel, minHeight = getMinPanelHeight()) {
     return panel.offsetHeight <= minHeight + 10; // 10px tolerance
 }
 
@@ -172,7 +163,7 @@ function dismissPanel(panel, toggleElement = null) {
  * Handle vertical swipe on info panel (dismiss or expand)
  */
 function handleInfoPanelVerticalSwipe(deltaY, panel) {
-    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+    const minHeight = getMinPanelHeight();
     
     // Swipe down to dismiss (when at minimum height and scrolled to top)
     if (deltaY > 0 && isAtMinHeight(panel, minHeight) && isAtTop(panel)) {
@@ -193,7 +184,7 @@ function handleInfoPanelVerticalSwipe(deltaY, panel) {
  * Handle vertical swipe on default panel (dismiss)
  */
 function handleDefaultPanelVerticalSwipe(deltaY, panel, toggleElement) {
-    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+    const minHeight = getMinPanelHeight();
     
     // Swipe down to dismiss (when at minimum height and scrolled to top)
     if (deltaY > 0 && isAtMinHeight(panel, minHeight) && isAtTop(panel)) {
@@ -455,7 +446,7 @@ defaultPanel.addEventListener('touchend', (e) => {
     const deltaY = e.changedTouches[0].clientY - defaultPanelTouchState.startY;
 
     // Only handle if swipe is significant
-    if (Math.abs(deltaY) > TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE) {
+    if (Math.abs(deltaY) > CFG.TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE) {
         handleDefaultPanelVerticalSwipe(deltaY, defaultPanel, burgerMenu);
     }
 }, { passive: true });
@@ -494,8 +485,8 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
         e.stopPropagation();
 
         const deltaY = dragStartY - e.touches[0].clientY;
-        const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
-        const maxHeight = window.innerHeight - MOBILE_LAYOUT.CATEGORY_BAR_HEIGHT;
+        const minHeight = getMinPanelHeight();
+        const maxHeight = window.innerHeight - CFG.MOBILE_LAYOUT.CATEGORY_BAR_HEIGHT;
         const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
         panel.style.height = newHeight + 'px';
     };
@@ -511,7 +502,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
         const totalDrag = Math.abs(deltaY);
 
         // If it was a tap (minimal movement), dismiss
-        if (totalDrag < TOUCH_THRESHOLDS.TAP_MAX_DISTANCE) {
+        if (totalDrag < CFG.TOUCH_THRESHOLDS.TAP_MAX_DISTANCE) {
             onDismiss();
             panel.style.height = '';
         }
