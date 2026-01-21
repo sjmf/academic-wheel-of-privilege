@@ -638,7 +638,7 @@
                 bottom: 0;
                 left: 0;
                 width: 52px;
-                height: 60px;
+                height: 68px; /* Match category bar: 44px button + 24px padding */
                 background: rgba(15, 23, 42, 0.95);
                 border: none;
                 border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -664,7 +664,7 @@
             #mobile-info-panel {
                 display: none;
                 position: fixed;
-                bottom: 60px;
+                bottom: 68px;
                 left: 12px;
                 right: 12px;
                 background: rgba(15, 23, 42, 0.98);
@@ -672,7 +672,7 @@
                 border-radius: 16px 16px 0 0;
                 padding: 20px;
                 padding-top: 28px;
-                max-height: 50vh;
+                max-height: 60vh;
                 overflow-y: auto;
                 z-index: 150;
                 pointer-events: auto;
@@ -770,11 +770,11 @@
             #info-panel {
                 position: fixed;
                 top: auto;
-                bottom: 60px;
+                bottom: 68px;
                 left: 12px;
                 right: 12px;
                 width: auto;
-                max-height: 50vh;
+                max-height: 60vh;
                 border-radius: 16px 16px 0 0;
                 transform: translateY(100%);
                 padding: 20px;
@@ -1071,7 +1071,7 @@
             PROJECTION_Z: 0.5,
 
             // Mobile-specific settings
-            MOBILE_PANEL_OFFSET_Y: 4,  // How much to move wheel up when panel opens
+            MOBILE_PANEL_OFFSET_Y: 5,  // How much to move wheel up when panel opens
             TOUCH_ZOOM_SENSITIVITY: 0.03,
             TOUCH_ROTATION_SENSITIVITY: 0.008
         };
