@@ -557,6 +557,97 @@ body {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
+    /* Shared mobile flyout styles */
+    .mobile-flyout {
+        position: fixed;
+        bottom: 68px;
+        top: inherit;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        background: rgba(15, 23, 42, 0.98);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px 16px 0 0;
+        padding: 20px;
+        padding-top: 28px;
+        height: 60vh;
+        max-height: 90vh;
+        overflow-y: auto;
+        z-index: 150;
+    }
+
+    .mobile-flyout::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+    }
+
+    .mobile-flyout h2 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+        color: #fff;
+    }
+
+    .mobile-flyout h3 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .mobile-flyout p {
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 6px;
+    }
+
+    .mobile-flyout a {
+        color: rgba(96, 165, 250, 0.9);
+        text-decoration: none;
+    }
+
+    .mobile-flyout a:hover {
+        text-decoration: underline;
+    }
+
+    .mobile-flyout .default-section {
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .mobile-flyout .default-section:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .mobile-flyout.expanded {
+        max-height: calc(100vh - 68px);
+        transition: max-height 0.3s ease;
+    }
+
+    /* Grab bar for dragging/dismissing */
+    .grab-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 28px;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .grab-bar:active {
+        cursor: grabbing;
+    }
+
     #header {
         top: 12px;
         left: 50%;
@@ -655,79 +746,14 @@ body {
         color: #fff;
     }
 
-    /* Mobile info panel */
+    /* Mobile info panel - uses shared .mobile-flyout styles */
     #mobile-info-panel {
         display: none;
-        position: fixed;
-        bottom: 68px;
-        left: 12px;
-        right: 12px;
-        background: rgba(15, 23, 42, 0.98);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px 16px 0 0;
-        padding: 20px;
-        padding-top: 28px;
-        height: 60vh;
-        max-height: 90vh;
-        overflow-y: auto;
-        z-index: 150;
         pointer-events: auto;
-    }
-
-    #mobile-info-panel::before {
-        content: '';
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 4px;
-        background: rgba(255, 255, 255, 0.3);
-        border-radius: 2px;
     }
 
     #mobile-info-panel.visible {
         display: block;
-    }
-
-    #mobile-info-panel h2 {
-        font-size: 1.2rem;
-        margin-bottom: 12px;
-        color: #fff;
-    }
-
-    #mobile-info-panel .default-section {
-        margin-bottom: 12px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    #mobile-info-panel .default-section:last-child {
-        margin-bottom: 0;
-        padding-bottom: 0;
-        border-bottom: none;
-    }
-
-    #mobile-info-panel h3 {
-        font-size: 0.9rem;
-        margin-bottom: 6px;
-        color: rgba(255, 255, 255, 0.9);
-    }
-
-    #mobile-info-panel p {
-        font-size: 0.8rem;
-        line-height: 1.5;
-        color: rgba(255, 255, 255, 0.7);
-        margin-bottom: 6px;
-    }
-
-    #mobile-info-panel a {
-        color: rgba(96, 165, 250, 0.9);
-        text-decoration: none;
-    }
-
-    #mobile-info-panel a:hover {
-        text-decoration: underline;
     }
 
     .category-btn {
@@ -763,55 +789,14 @@ body {
         transform: none;
     }
 
+    /* Bubble info panel - uses shared .mobile-flyout styles, plus specific overrides */
     #info-panel {
-        position: fixed;
-        top: auto;
-        bottom: 68px;
-        left: 12px;
-        right: 12px;
         width: auto;
-        height: 60vh;
-        max-height: 90vh;
-        border-radius: 16px 16px 0 0;
         transform: translateY(100%);
-        padding: 20px;
-        padding-top: 28px;
-    }
-
-    #info-panel::before {
-        content: '';
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 4px;
-        background: rgba(255, 255, 255, 0.3);
-        border-radius: 2px;
     }
 
     #info-panel.visible {
         transform: translateY(0);
-    }
-
-    #info-panel.expanded {
-        max-height: calc(100vh - 68px);
-        transition: max-height 0.3s ease;
-    }
-
-    /* Grab bar for dragging/dismissing */
-    .grab-bar {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 28px;
-        cursor: grab;
-        touch-action: none;
-    }
-
-    .grab-bar:active {
-        cursor: grabbing;
     }
 
     /* Hide default panel on mobile */
@@ -838,6 +823,12 @@ body {
     #info-panel .spectrum-item {
         padding: 8px 4px;
         font-size: 0.65rem;
+    }
+
+    /* overrides required with greater specificity */
+    #info-panel.mobile-flyout {
+        top: inherit;
+        right: 12px;
     }
 
     #legend {

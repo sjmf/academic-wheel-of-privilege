@@ -289,89 +289,66 @@ mobileInfoPanel.addEventListener('touchend', (e) => {
     }
 }, { passive: true });
 
-// Grab bar handlers for info panel
-const infoPanelGrabBar = document.getElementById('info-panel-grab-bar');
-let infoPanelDragStartY = 0;
-let infoPanelStartHeight = 0;
-let isInfoPanelDragging = false;
+// Shared grab bar handler factory for mobile flyouts
+function setupGrabBarHandlers(grabBar, panel, onDismiss) {
+    if (!grabBar) return;
 
-if (infoPanelGrabBar) {
-    infoPanelGrabBar.addEventListener('touchstart', (e) => {
+    let isDragging = false;
+    let dragStartY = 0;
+    let startHeight = 0;
+
+    grabBar.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        isInfoPanelDragging = true;
-        infoPanelDragStartY = e.touches[0].clientY;
-        infoPanelStartHeight = infoPanel.offsetHeight;
-        infoPanel.style.transition = 'none';
+        isDragging = true;
+        dragStartY = e.touches[0].clientY;
+        startHeight = panel.offsetHeight;
+        panel.style.transition = 'none';
     }, { passive: false });
 
-    infoPanelGrabBar.addEventListener('touchmove', (e) => {
-        if (!isInfoPanelDragging) return;
+    grabBar.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
         e.preventDefault();
 
-        const deltaY = infoPanelDragStartY - e.touches[0].clientY;
-        const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, infoPanelStartHeight + deltaY));
-        infoPanel.style.height = newHeight + 'px';
+        const deltaY = dragStartY - e.touches[0].clientY;
+        const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, startHeight + deltaY));
+        panel.style.height = newHeight + 'px';
     }, { passive: false });
 
-    infoPanelGrabBar.addEventListener('touchend', (e) => {
-        if (!isInfoPanelDragging) return;
-        isInfoPanelDragging = false;
-        infoPanel.style.transition = '';
+    grabBar.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        panel.style.transition = '';
 
         const touchEndY = e.changedTouches[0].clientY;
-        const deltaY = touchEndY - infoPanelDragStartY;
+        const deltaY = touchEndY - dragStartY;
         const totalDrag = Math.abs(deltaY);
 
         // If it was a tap (minimal movement), dismiss
         if (totalDrag < 10) {
-            lockedBubble = null;
-            hideInfoPanel();
-            infoPanel.classList.remove('expanded');
-            infoPanel.style.height = '';
+            onDismiss();
+            panel.style.height = '';
         }
         // Otherwise keep the new height from dragging
     });
 }
 
-// Grab bar handlers for mobile info panel (How to Use)
-const mobilePanelGrabBar = document.getElementById('mobile-panel-grab-bar');
-let isMobilePanelDragging = false;
-let mobilePanelDragStartY = 0;
-let mobilePanelStartHeight = 0;
+// Set up grab bar for bubble info panel
+setupGrabBarHandlers(
+    document.getElementById('info-panel-grab-bar'),
+    infoPanel,
+    () => {
+        lockedBubble = null;
+        hideInfoPanel();
+        infoPanel.classList.remove('expanded');
+    }
+);
 
-if (mobilePanelGrabBar) {
-    mobilePanelGrabBar.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        isMobilePanelDragging = true;
-        mobilePanelDragStartY = e.touches[0].clientY;
-        mobilePanelStartHeight = mobileInfoPanel.offsetHeight;
-        mobileInfoPanel.style.transition = 'none';
-    }, { passive: false });
-
-    mobilePanelGrabBar.addEventListener('touchmove', (e) => {
-        if (!isMobilePanelDragging) return;
-        e.preventDefault();
-
-        const deltaY = mobilePanelDragStartY - e.touches[0].clientY;
-        const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, mobilePanelStartHeight + deltaY));
-        mobileInfoPanel.style.height = newHeight + 'px';
-    }, { passive: false });
-
-    mobilePanelGrabBar.addEventListener('touchend', (e) => {
-        if (!isMobilePanelDragging) return;
-        isMobilePanelDragging = false;
-        mobileInfoPanel.style.transition = '';
-
-        const touchEndY = e.changedTouches[0].clientY;
-        const deltaY = touchEndY - mobilePanelDragStartY;
-        const totalDrag = Math.abs(deltaY);
-
-        // If it was a tap (minimal movement), dismiss
-        if (totalDrag < 10) {
-            mobileInfoPanel.classList.remove('visible');
-            burgerMenu.classList.remove('active');
-            mobileInfoPanel.style.height = '';
-        }
-        // Otherwise keep the new height from dragging
-    });
-}
+// Set up grab bar for mobile info panel (How to Use)
+setupGrabBarHandlers(
+    document.getElementById('mobile-panel-grab-bar'),
+    mobileInfoPanel,
+    () => {
+        mobileInfoPanel.classList.remove('visible');
+        burgerMenu.classList.remove('active');
+    }
+);
