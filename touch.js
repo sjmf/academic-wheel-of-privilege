@@ -211,10 +211,15 @@ let infoPanelTouchStartY = 0;
 let infoPanelTouchStartedOnGrabBar = false;
 
 infoPanel.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 0) return;
     infoPanelTouchStartX = e.touches[0].clientX;
     infoPanelTouchStartY = e.touches[0].clientY;
-    // Check if touch started on grab bar
-    infoPanelTouchStartedOnGrabBar = e.target.closest('.grab-bar') !== null;
+    // Check if touch started on grab bar (using both element check and Y position check for real mobile)
+    const grabBar = document.getElementById('info-panel-grab-bar');
+    const isOnGrabBar = e.target.closest('.grab-bar') !== null;
+    const grabBarRect = grabBar ? grabBar.getBoundingClientRect() : null;
+    const isInGrabBarArea = grabBarRect && e.touches[0].clientY <= grabBarRect.bottom;
+    infoPanelTouchStartedOnGrabBar = isOnGrabBar || isInGrabBarArea;
 }, { passive: true });
 
 infoPanel.addEventListener('touchend', (e) => {
@@ -303,7 +308,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
     grabBar.style.pointerEvents = 'auto';
     grabBar.style.touchAction = 'none';
 
-    grabBar.addEventListener('touchstart', (e) => {
+    const handleTouchStart = (e) => {
         if (e.touches.length === 0) return;
         e.preventDefault();
         e.stopPropagation();
@@ -311,19 +316,19 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
         dragStartY = e.touches[0].clientY;
         startHeight = panel.offsetHeight;
         panel.style.transition = 'none';
-    }, { passive: false });
+    };
 
-    grabBar.addEventListener('touchmove', (e) => {
+    const handleTouchMove = (e) => {
         if (!isDragging || e.touches.length === 0) return;
-        e.stopPropagation();
         e.preventDefault();
+        e.stopPropagation();
 
         const deltaY = dragStartY - e.touches[0].clientY;
         const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, startHeight + deltaY));
         panel.style.height = newHeight + 'px';
-    }, { passive: false });
+    };
 
-    grabBar.addEventListener('touchend', (e) => {
+    const handleTouchEnd = (e) => {
         if (!isDragging || e.changedTouches.length === 0) return;
         e.stopPropagation();
         isDragging = false;
@@ -339,7 +344,12 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
             panel.style.height = '';
         }
         // Otherwise keep the new height from dragging
-    }, { passive: true });
+    };
+
+    // Use capture phase to ensure we intercept touches before parent elements
+    grabBar.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    grabBar.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    grabBar.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
 }
 
 // Set up grab bar for bubble info panel
