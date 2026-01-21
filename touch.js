@@ -240,11 +240,14 @@ infoPanel.addEventListener('touchend', (e) => {
         }
     }
 
-    // Swipe down to dismiss (when scrolled to top)
-    if (deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && infoPanel.scrollTop <= 0) {
+    // Swipe down to dismiss (when scrolled to top AND at minimum height)
+    const minHeight = window.innerHeight * 0.5;
+    const isAtMinHeight = infoPanel.offsetHeight <= minHeight + 10; // 10px tolerance
+    if (deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && infoPanel.scrollTop <= 0 && isAtMinHeight) {
         lockedBubble = null;
         hideInfoPanel();
         infoPanel.classList.remove('expanded');
+        infoPanel.style.height = '';
     }
 
     // Swipe up to expand (when scrolled to bottom)
@@ -276,10 +279,13 @@ mobileInfoPanel.addEventListener('touchend', (e) => {
     const touchEndY = e.changedTouches[0].clientY;
     const deltaY = touchEndY - mobilePanelTouchStartY;
 
-    // Swipe down to dismiss
-    if (deltaY > 50 && mobileInfoPanel.scrollTop <= 0) {
+    // Swipe down to dismiss (when scrolled to top AND at minimum height)
+    const minHeight = window.innerHeight * 0.5;
+    const isAtMinHeight = mobileInfoPanel.offsetHeight <= minHeight + 10; // 10px tolerance
+    if (deltaY > 50 && mobileInfoPanel.scrollTop <= 0 && isAtMinHeight) {
         mobileInfoPanel.classList.remove('visible');
         burgerMenu.classList.remove('active');
+        mobileInfoPanel.style.height = '';
     }
 }, { passive: true });
 
