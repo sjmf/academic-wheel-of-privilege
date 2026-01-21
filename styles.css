@@ -746,16 +746,6 @@ body {
         color: #fff;
     }
 
-    /* Mobile info panel - uses shared .mobile-flyout styles */
-    #mobile-info-panel {
-        display: none;
-        pointer-events: auto;
-    }
-
-    #mobile-info-panel.visible {
-        display: block;
-    }
-
     .category-btn {
         padding: 10px 16px;
         font-size: 0.75rem;
@@ -789,19 +779,34 @@ body {
         transform: none;
     }
 
+    /* Mobile info panel - uses shared .mobile-flyout styles */
+    #default-panel.mobile-flyout {
+        display: none;
+        pointer-events: auto;
+        top: inherit;
+        right: 12px;
+        width: auto;
+        border-radius: 16px 16px 0px 0px
+    }
+
+    #default-panel.visible {
+        display: block;
+    }
+
     /* Bubble info panel - uses shared .mobile-flyout styles, plus specific overrides */
     #info-panel {
         width: auto;
         transform: translateY(100%);
     }
 
-    #info-panel.visible {
-        transform: translateY(0);
+    #info-panel.mobile-flyout {
+        top: inherit;
+        right: 12px;
+        border-radius: 16px 16px 0px 0px
     }
 
-    /* Hide default panel on mobile */
-    #default-panel {
-        display: none !important;
+    #info-panel.visible {
+        transform: translateY(0);
     }
 
     #info-panel h2 {
@@ -823,12 +828,6 @@ body {
     #info-panel .spectrum-item {
         padding: 8px 4px;
         font-size: 0.65rem;
-    }
-
-    /* overrides required with greater specificity */
-    #info-panel.mobile-flyout {
-        top: inherit;
-        right: 12px;
     }
 
     #legend {

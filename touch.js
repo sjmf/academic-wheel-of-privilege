@@ -155,12 +155,13 @@ container.addEventListener('touchend', (e) => {
         const dy = Math.abs(touch.clientY - touchStartPosition.y);
         if (dx < 10 && dy < 10) {
             // Close mobile info panel if open
-            const mobilePanel = document.getElementById('mobile-info-panel');
+            const mobilePanel = document.getElementById('default-panel');
             const burger = document.getElementById('burger-menu');
             if (mobilePanel.classList.contains('visible')) {
                 mobilePanel.classList.remove('visible');
                 burger.classList.remove('active');
             }
+            hideInfoPanel();
 
             // Check if tap was on a bubble to deselect
             if (lockedBubble) {
@@ -184,26 +185,27 @@ container.addEventListener('touchend', (e) => {
 
 // Mobile burger menu toggle
 const burgerMenu = document.getElementById('burger-menu');
-const mobileInfoPanel = document.getElementById('mobile-info-panel');
+const defaultPanel = document.getElementById('default-panel');
+const infoPanel = document.getElementById('info-panel');
 
 burgerMenu.addEventListener('click', (e) => {
     e.stopPropagation();
-    mobileInfoPanel.classList.toggle('visible');
+    defaultPanel.classList.toggle('visible');
     burgerMenu.classList.toggle('active');
+    infoPanel.classList.remove('visible');
 });
 
 // Close mobile info panel when tapping outside
 document.addEventListener('click', (e) => {
-    if (mobileInfoPanel.classList.contains('visible') &&
-        !mobileInfoPanel.contains(e.target) &&
+    if (defaultPanel.classList.contains('visible') &&
+        !defaultPanel.contains(e.target) &&
         !burgerMenu.contains(e.target)) {
-        mobileInfoPanel.classList.remove('visible');
+        defaultPanel.classList.remove('visible');
         burgerMenu.classList.remove('active');
     }
 });
 
 // Swipe left/right on info panel for prev/next navigation
-const infoPanel = document.getElementById('info-panel');
 let infoPanelTouchStartX = 0;
 let infoPanelTouchStartY = 0;
 let infoPanelTouchStartedOnGrabBar = false;
@@ -261,13 +263,13 @@ infoPanel.addEventListener('touchend', (e) => {
 let mobilePanelTouchStartY = 0;
 let mobilePanelTouchStartedOnGrabBar = false;
 
-mobileInfoPanel.addEventListener('touchstart', (e) => {
+defaultPanel.addEventListener('touchstart', (e) => {
     mobilePanelTouchStartY = e.touches[0].clientY;
     // Check if touch started on grab bar
     mobilePanelTouchStartedOnGrabBar = e.target.closest('.grab-bar') !== null;
 }, { passive: true });
 
-mobileInfoPanel.addEventListener('touchend', (e) => {
+defaultPanel.addEventListener('touchend', (e) => {
     // Skip swipe handling if touch started on grab bar (handled separately)
     if (mobilePanelTouchStartedOnGrabBar) {
         mobilePanelTouchStartedOnGrabBar = false;
@@ -281,11 +283,11 @@ mobileInfoPanel.addEventListener('touchend', (e) => {
 
     // Swipe down to dismiss (when scrolled to top AND at minimum height)
     const minHeight = window.innerHeight * 0.5;
-    const isAtMinHeight = mobileInfoPanel.offsetHeight <= minHeight + 10; // 10px tolerance
-    if (deltaY > 50 && mobileInfoPanel.scrollTop <= 0 && isAtMinHeight) {
-        mobileInfoPanel.classList.remove('visible');
+    const isAtMinHeight = defaultPanel.offsetHeight <= minHeight + 10; // 10px tolerance
+    if (deltaY > 50 && defaultPanel.scrollTop <= 0 && isAtMinHeight) {
+        defaultPanel.classList.remove('visible');
         burgerMenu.classList.remove('active');
-        mobileInfoPanel.style.height = '';
+        defaultPanel.style.height = '';
     }
 }, { passive: true });
 
@@ -346,9 +348,9 @@ setupGrabBarHandlers(
 // Set up grab bar for mobile info panel (How to Use)
 setupGrabBarHandlers(
     document.getElementById('mobile-panel-grab-bar'),
-    mobileInfoPanel,
+    defaultPanel,
     () => {
-        mobileInfoPanel.classList.remove('visible');
+        defaultPanel.classList.remove('visible');
         burgerMenu.classList.remove('active');
     }
 );

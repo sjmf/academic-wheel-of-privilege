@@ -518,6 +518,8 @@ function updateInfoPanel(bubble) {
 
     // Hide default panel when showing bubble info
     document.getElementById('default-panel').classList.add('hidden');
+    document.getElementById('default-panel').classList.remove('visible');
+    document.getElementById('burger-menu').classList.remove('active');
 
     // Move wheel up on mobile so it's not hidden by panel
     if (window.innerWidth <= 768) {
