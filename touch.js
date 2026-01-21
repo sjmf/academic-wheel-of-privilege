@@ -1,13 +1,52 @@
 // Touch event handlers for mobile
 // This file handles all touch interactions for the Academic Wheel of Privilege
 
-// Touch state variables for wheel interaction
-let touchStartDistance = 0;
-let touchStartPosition = { x: 0, y: 0 };
-let isTouchDragging = false;
-let isTouchDraggingBubble = false;
-let touchDraggedBubble = null;
-let touchDragRadiusOffset = 0;
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const TOUCH_THRESHOLDS = {
+    TAP_MAX_DISTANCE: 10,
+    SWIPE_MIN_DISTANCE: 50,
+    SWIPE_ASPECT_RATIO: 1.5
+};
+
+const MOBILE_LAYOUT = {
+    MIN_PANEL_HEIGHT: () => window.innerHeight * 0.5,
+    CATEGORY_BAR_HEIGHT: 68,
+    GRAB_BAR_TOUCH_TOLERANCE: 10
+};
+
+// ============================================================================
+// STATE OBJECTS
+// ============================================================================
+
+// Wheel interaction state (THREE.js wheel canvas)
+const wheelTouchState = {
+    startDistance: 0,
+    startPosition: { x: 0, y: 0 },
+    isDragging: false,
+    isDraggingBubble: false,
+    draggedBubble: null,
+    dragRadiusOffset: 0
+};
+
+// Info panel swipe/drag state
+const infoPanelTouchState = {
+    startX: 0,
+    startY: 0,
+    startedOnGrabBar: false
+};
+
+// Default panel swipe/drag state
+const defaultPanelTouchState = {
+    startY: 0,
+    startedOnGrabBar: false
+};
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
 function getTouchDistance(touches) {
     if (touches.length < 2) return 0;
@@ -26,7 +65,52 @@ function getTouchCenter(touches) {
     };
 }
 
-// Wheel touch handlers (requires: container, renderer, mouse, camera, raycaster, bubbles, CFG, ringRadii, moveBubbleToRing, lockedBubble, hideInfoPanel, updateInfoPanel, rotationVelocity)
+/**
+ * Check if a touch gesture is a tap (minimal movement)
+ */
+function isTapGesture(startX, startY, endX, endY, threshold = TOUCH_THRESHOLDS.TAP_MAX_DISTANCE) {
+    const dx = Math.abs(endX - startX);
+    const dy = Math.abs(endY - startY);
+    return dx < threshold && dy < threshold;
+}
+
+/**
+ * Analyze swipe gesture properties
+ */
+function analyzeSwipeGesture(deltaX, deltaY, minDelta = TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE, aspectRatio = TOUCH_THRESHOLDS.SWIPE_ASPECT_RATIO) {
+    const isHorizontal = Math.abs(deltaX) > minDelta && Math.abs(deltaX) > Math.abs(deltaY) * aspectRatio;
+    const isVertical = Math.abs(deltaY) > minDelta && Math.abs(deltaY) > Math.abs(deltaX) * aspectRatio;
+    return {
+        isHorizontal,
+        isVertical,
+        isSignificant: isHorizontal || isVertical,
+        deltaX,
+        deltaY
+    };
+}
+
+/**
+ * Check if touch target is a grab bar or within grab bar area
+ */
+function isTouchOnGrabBar(element, grabBarElementId) {
+    const isElementGrabBar = element.closest('.grab-bar') !== null;
+    if (isElementGrabBar) return true;
+    
+    const grabBar = document.getElementById(grabBarElementId);
+    if (!grabBar) return false;
+    
+    const rect = grabBar.getBoundingClientRect();
+    // This will be populated from the touchstart event
+    return false; // Actual Y check done in the touch handler
+}
+
+// ============================================================================
+// WHEEL TOUCH HANDLERS
+// ============================================================================
+// Dependencies: container, renderer, mouse, camera, raycaster, bubbles, CFG,
+//               ringRadii, moveBubbleToRing, lockedBubble, hideInfoPanel, 
+//               updateInfoPanel, rotationVelocity
+
 container.addEventListener('touchstart', (e) => {
     // Don't prevent default for elements that need it (category buttons etc)
     if (e.target !== renderer.domElement) return;
@@ -37,20 +121,20 @@ container.addEventListener('touchstart', (e) => {
     mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-    touchStartPosition = { x: touch.clientX, y: touch.clientY };
+    wheelTouchState.startPosition = { x: touch.clientX, y: touch.clientY };
 
     if (e.touches.length === 2) {
         // Pinch zoom start
-        touchStartDistance = getTouchDistance(e.touches);
+        wheelTouchState.startDistance = getTouchDistance(e.touches);
     } else {
         // Single finger - check for bubble drag or rotation
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(bubbles);
 
         if (intersects.length > 0) {
-            isTouchDraggingBubble = true;
-            touchDraggedBubble = intersects[0].object;
-            touchDraggedBubble.userData.targetScale = CFG.DRAG_SCALE;
+            wheelTouchState.isDraggingBubble = true;
+            wheelTouchState.draggedBubble = intersects[0].object;
+            wheelTouchState.draggedBubble.userData.targetScale = CFG.DRAG_SCALE;
 
             // Calculate offset
             const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
@@ -59,10 +143,10 @@ container.addEventListener('touchstart', (e) => {
             const distance = -camera.position.z / dir.z;
             const clickPos = camera.position.clone().add(dir.multiplyScalar(distance));
             const clickRadius = Math.sqrt(clickPos.x * clickPos.x + clickPos.y * clickPos.y);
-            const bubbleRadius = Math.sqrt(touchDraggedBubble.position.x * touchDraggedBubble.position.x + touchDraggedBubble.position.y * touchDraggedBubble.position.y);
-            touchDragRadiusOffset = bubbleRadius - clickRadius;
+            const bubbleRadius = Math.sqrt(wheelTouchState.draggedBubble.position.x * wheelTouchState.draggedBubble.position.x + wheelTouchState.draggedBubble.position.y * wheelTouchState.draggedBubble.position.y);
+            wheelTouchState.dragRadiusOffset = bubbleRadius - clickRadius;
         } else {
-            isTouchDragging = true;
+            wheelTouchState.isDragging = true;
         }
     }
 }, { passive: false });
@@ -74,18 +158,18 @@ container.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2) {
         // Pinch zoom
         const newDistance = getTouchDistance(e.touches);
-        if (touchStartDistance > 0) {
-            const delta = touchStartDistance - newDistance;
+        if (wheelTouchState.startDistance > 0) {
+            const delta = wheelTouchState.startDistance - newDistance;
             camera.position.z += delta * CFG.TOUCH_ZOOM_SENSITIVITY;
             camera.position.z = Math.max(CFG.CAMERA_Z_MIN, Math.min(CFG.CAMERA_Z_MAX, camera.position.z));
         }
-        touchStartDistance = newDistance;
+        wheelTouchState.startDistance = newDistance;
     } else if (e.touches.length === 1) {
         const touch = e.touches[0];
         mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-        if (isTouchDraggingBubble && touchDraggedBubble) {
+        if (wheelTouchState.isDraggingBubble && wheelTouchState.draggedBubble) {
             // Drag bubble between rings
             const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
             vector.unproject(camera);
@@ -93,29 +177,29 @@ container.addEventListener('touchmove', (e) => {
             const distance = -camera.position.z / dir.z;
             const pos = camera.position.clone().add(dir.multiplyScalar(distance));
 
-            const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + touchDragRadiusOffset;
+            const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + wheelTouchState.dragRadiusOffset;
             const clampedDist = Math.max(ringRadii.inner - CFG.RING_PADDING, Math.min(ringRadii.outer + CFG.RING_PADDING, currentDist));
-            const angle = touchDraggedBubble.userData.angle;
+            const angle = wheelTouchState.draggedBubble.userData.angle;
 
-            touchDraggedBubble.position.x = Math.cos(angle) * clampedDist;
-            touchDraggedBubble.position.y = Math.sin(angle) * clampedDist;
-        } else if (isTouchDragging) {
+            wheelTouchState.draggedBubble.position.x = Math.cos(angle) * clampedDist;
+            wheelTouchState.draggedBubble.position.y = Math.sin(angle) * clampedDist;
+        } else if (wheelTouchState.isDragging) {
             // Rotate wheel
             const deltaMove = {
-                x: touch.clientX - touchStartPosition.x,
-                y: touch.clientY - touchStartPosition.y
+                x: touch.clientX - wheelTouchState.startPosition.x,
+                y: touch.clientY - wheelTouchState.startPosition.y
             };
             rotationVelocity.x = deltaMove.y * CFG.TOUCH_ROTATION_SENSITIVITY;
             rotationVelocity.y = -deltaMove.x * CFG.TOUCH_ROTATION_SENSITIVITY;
-            touchStartPosition = { x: touch.clientX, y: touch.clientY };
+            wheelTouchState.startPosition = { x: touch.clientX, y: touch.clientY };
         }
     }
 }, { passive: false });
 
 container.addEventListener('touchend', (e) => {
-    if (isTouchDraggingBubble && touchDraggedBubble) {
+    if (wheelTouchState.isDraggingBubble && wheelTouchState.draggedBubble) {
         // Snap bubble to nearest ring
-        const pos = touchDraggedBubble.position;
+        const pos = wheelTouchState.draggedBubble.position;
         const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
         let targetRing = 'inner';
@@ -127,33 +211,29 @@ container.addEventListener('touchend', (e) => {
             }
         }
 
-        moveBubbleToRing(touchDraggedBubble, targetRing);
-        touchDraggedBubble.userData.targetScale = CFG.DEFAULT_SCALE;
+        moveBubbleToRing(wheelTouchState.draggedBubble, targetRing);
+        wheelTouchState.draggedBubble.userData.targetScale = CFG.DEFAULT_SCALE;
 
         // If it was a tap (not much movement), select the bubble
         if (e.changedTouches.length > 0) {
             const touch = e.changedTouches[0];
-            const dx = Math.abs(touch.clientX - touchStartPosition.x);
-            const dy = Math.abs(touch.clientY - touchStartPosition.y);
-            if (dx < 10 && dy < 10) {
+            if (isTapGesture(wheelTouchState.startPosition.x, wheelTouchState.startPosition.y, touch.clientX, touch.clientY)) {
                 // It was a tap
-                if (lockedBubble === touchDraggedBubble) {
+                if (lockedBubble === wheelTouchState.draggedBubble) {
                     lockedBubble = null;
                     hideInfoPanel();
                 } else {
-                    lockedBubble = touchDraggedBubble;
-                    updateInfoPanel(touchDraggedBubble);
+                    lockedBubble = wheelTouchState.draggedBubble;
+                    updateInfoPanel(wheelTouchState.draggedBubble);
                 }
             }
         }
 
-        touchDraggedBubble = null;
-    } else if (isTouchDragging && e.changedTouches.length > 0) {
+        wheelTouchState.draggedBubble = null;
+    } else if (wheelTouchState.isDragging && e.changedTouches.length > 0) {
         // Check if it was a tap to deselect
         const touch = e.changedTouches[0];
-        const dx = Math.abs(touch.clientX - touchStartPosition.x);
-        const dy = Math.abs(touch.clientY - touchStartPosition.y);
-        if (dx < 10 && dy < 10) {
+        if (isTapGesture(wheelTouchState.startPosition.x, wheelTouchState.startPosition.y, touch.clientX, touch.clientY)) {
             // Close mobile info panel if open
             const mobilePanel = document.getElementById('default-panel');
             const burger = document.getElementById('burger-menu');
@@ -178,10 +258,14 @@ container.addEventListener('touchend', (e) => {
         }
     }
 
-    isTouchDragging = false;
-    isTouchDraggingBubble = false;
-    touchStartDistance = 0;
+    wheelTouchState.isDragging = false;
+    wheelTouchState.isDraggingBubble = false;
+    wheelTouchState.startDistance = 0;
 });
+
+// ============================================================================
+// MOBILE PANEL TOUCH HANDLERS
+// ============================================================================
 
 // Mobile burger menu toggle
 const burgerMenu = document.getElementById('burger-menu');
@@ -205,98 +289,99 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Swipe left/right on info panel for prev/next navigation
-let infoPanelTouchStartX = 0;
-let infoPanelTouchStartY = 0;
-let infoPanelTouchStartedOnGrabBar = false;
+// ============================================================================
+// INFO PANEL SWIPE HANDLERS
+// ============================================================================
 
 infoPanel.addEventListener('touchstart', (e) => {
     if (e.touches.length === 0) return;
-    infoPanelTouchStartX = e.touches[0].clientX;
-    infoPanelTouchStartY = e.touches[0].clientY;
-    // Check if touch started on grab bar (using both element check and Y position check for real mobile)
+    infoPanelTouchState.startX = e.touches[0].clientX;
+    infoPanelTouchState.startY = e.touches[0].clientY;
+    
+    // Check if touch started on grab bar
     const grabBar = document.getElementById('info-panel-grab-bar');
-    const isOnGrabBar = e.target.closest('.grab-bar') !== null;
-    const grabBarRect = grabBar ? grabBar.getBoundingClientRect() : null;
-    const isInGrabBarArea = grabBarRect && e.touches[0].clientY <= grabBarRect.bottom;
-    infoPanelTouchStartedOnGrabBar = isOnGrabBar || isInGrabBarArea;
+    infoPanelTouchState.startedOnGrabBar = 
+        e.target.closest('.grab-bar') !== null ||
+        (grabBar && e.touches[0].clientY <= grabBar.getBoundingClientRect().bottom);
 }, { passive: true });
 
 infoPanel.addEventListener('touchend', (e) => {
     // Skip swipe handling if touch started on grab bar (handled separately)
-    if (infoPanelTouchStartedOnGrabBar) {
-        infoPanelTouchStartedOnGrabBar = false;
+    if (infoPanelTouchState.startedOnGrabBar) {
+        infoPanelTouchState.startedOnGrabBar = false;
         return;
     }
 
     if (!lockedBubble || e.changedTouches.length === 0) return;
 
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    const deltaX = touchEndX - infoPanelTouchStartX;
-    const deltaY = touchEndY - infoPanelTouchStartY;
+    const deltaX = e.changedTouches[0].clientX - infoPanelTouchState.startX;
+    const deltaY = e.changedTouches[0].clientY - infoPanelTouchState.startY;
 
-    // Only trigger if horizontal swipe is dominant and significant
-    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    const swipe = analyzeSwipeGesture(deltaX, deltaY);
+
+    // Horizontal swipe for prev/next navigation
+    if (swipe.isHorizontal) {
         if (deltaX > 0) {
-            // Swipe right = previous
             navigateToBubble(-1);
         } else {
-            // Swipe left = next
             navigateToBubble(1);
         }
     }
 
-    // Swipe down to dismiss (when scrolled to top AND at minimum height)
-    const minHeight = window.innerHeight * 0.5;
-    const isAtMinHeight = infoPanel.offsetHeight <= minHeight + 10; // 10px tolerance
-    if (deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && infoPanel.scrollTop <= 0 && isAtMinHeight) {
+    // Vertical swipe down to dismiss (when scrolled to top AND at minimum height)
+    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+    const isAtMinHeight = infoPanel.offsetHeight <= minHeight + 10;
+    if (swipe.isVertical && deltaY > 0 && infoPanel.scrollTop <= 0 && isAtMinHeight) {
         lockedBubble = null;
         hideInfoPanel();
         infoPanel.classList.remove('expanded');
         infoPanel.style.height = '';
     }
 
-    // Swipe up to expand (when scrolled to bottom)
+    // Vertical swipe up to expand (when scrolled to bottom)
     const isAtBottom = infoPanel.scrollHeight - infoPanel.scrollTop <= infoPanel.clientHeight + 5;
-    if (deltaY < -50 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && isAtBottom) {
+    if (swipe.isVertical && deltaY < 0 && isAtBottom) {
         infoPanel.classList.add('expanded');
     }
 }, { passive: true });
 
-// Mobile info panel (How to Use) swipe/drag handlers
-let mobilePanelTouchStartY = 0;
-let mobilePanelTouchStartedOnGrabBar = false;
+// ============================================================================
+// DEFAULT PANEL SWIPE HANDLERS
+// ============================================================================
 
 defaultPanel.addEventListener('touchstart', (e) => {
-    mobilePanelTouchStartY = e.touches[0].clientY;
-    // Check if touch started on grab bar
-    mobilePanelTouchStartedOnGrabBar = e.target.closest('.grab-bar') !== null;
+    defaultPanelTouchState.startY = e.touches[0].clientY;
+    defaultPanelTouchState.startedOnGrabBar = e.target.closest('.grab-bar') !== null;
 }, { passive: true });
 
 defaultPanel.addEventListener('touchend', (e) => {
     // Skip swipe handling if touch started on grab bar (handled separately)
-    if (mobilePanelTouchStartedOnGrabBar) {
-        mobilePanelTouchStartedOnGrabBar = false;
+    if (defaultPanelTouchState.startedOnGrabBar) {
+        defaultPanelTouchState.startedOnGrabBar = false;
         return;
     }
 
     if (e.changedTouches.length === 0) return;
 
-    const touchEndY = e.changedTouches[0].clientY;
-    const deltaY = touchEndY - mobilePanelTouchStartY;
+    const deltaY = e.changedTouches[0].clientY - defaultPanelTouchState.startY;
 
     // Swipe down to dismiss (when scrolled to top AND at minimum height)
-    const minHeight = window.innerHeight * 0.5;
-    const isAtMinHeight = defaultPanel.offsetHeight <= minHeight + 10; // 10px tolerance
-    if (deltaY > 50 && defaultPanel.scrollTop <= 0 && isAtMinHeight) {
+    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+    const isAtMinHeight = defaultPanel.offsetHeight <= minHeight + 10;
+    if (deltaY > TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE && defaultPanel.scrollTop <= 0 && isAtMinHeight) {
         defaultPanel.classList.remove('visible');
         burgerMenu.classList.remove('active');
         defaultPanel.style.height = '';
     }
 }, { passive: true });
 
-// Shared grab bar handler factory for mobile flyouts
+// ============================================================================
+// GRAB BAR HANDLERS
+// ============================================================================
+
+/**
+ * Set up grab bar drag/dismiss handlers for a mobile panel
+ */
 function setupGrabBarHandlers(grabBar, panel, onDismiss) {
     if (!grabBar) return;
 
@@ -324,7 +409,9 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
         e.stopPropagation();
 
         const deltaY = dragStartY - e.touches[0].clientY;
-        const newHeight = Math.max(window.innerHeight * 0.5, Math.min(window.innerHeight - 68, startHeight + deltaY));
+        const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+        const maxHeight = window.innerHeight - MOBILE_LAYOUT.CATEGORY_BAR_HEIGHT;
+        const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
         panel.style.height = newHeight + 'px';
     };
 
@@ -339,7 +426,7 @@ function setupGrabBarHandlers(grabBar, panel, onDismiss) {
         const totalDrag = Math.abs(deltaY);
 
         // If it was a tap (minimal movement), dismiss
-        if (totalDrag < 10) {
+        if (totalDrag < TOUCH_THRESHOLDS.TAP_MAX_DISTANCE) {
             onDismiss();
             panel.style.height = '';
         }
