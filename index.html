@@ -665,16 +665,29 @@
                 display: none;
                 position: fixed;
                 bottom: 60px;
-                left: 0;
-                right: 0;
+                left: 12px;
+                right: 12px;
                 background: rgba(15, 23, 42, 0.98);
                 border-top: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 16px 16px 0 0;
                 padding: 20px;
-                max-height: 60vh;
+                padding-top: 28px;
+                max-height: 50vh;
                 overflow-y: auto;
                 z-index: 150;
                 pointer-events: auto;
+            }
+
+            #mobile-info-panel::before {
+                content: '';
+                position: absolute;
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 40px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
             }
 
             #mobile-info-panel.visible {
@@ -765,22 +778,19 @@
                 border-radius: 16px 16px 0 0;
                 transform: translateY(100%);
                 padding: 20px;
-                /* Scroll indicator - gradient fade at bottom */
-                -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
-                mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
+                padding-top: 28px;
             }
 
-            #info-panel::after {
+            #info-panel::before {
                 content: '';
                 position: absolute;
-                bottom: 0;
+                top: 10px;
                 left: 50%;
                 transform: translateX(-50%);
                 width: 40px;
                 height: 4px;
                 background: rgba(255, 255, 255, 0.3);
                 border-radius: 2px;
-                margin-bottom: 8px;
             }
 
             #info-panel.visible {
@@ -2441,6 +2451,36 @@
                 burgerMenu.classList.remove('active');
             }
         });
+
+        // Swipe left/right on info panel for prev/next navigation
+        const infoPanel = document.getElementById('info-panel');
+        let infoPanelTouchStartX = 0;
+        let infoPanelTouchStartY = 0;
+
+        infoPanel.addEventListener('touchstart', (e) => {
+            infoPanelTouchStartX = e.touches[0].clientX;
+            infoPanelTouchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        infoPanel.addEventListener('touchend', (e) => {
+            if (!lockedBubble || e.changedTouches.length === 0) return;
+
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaX = touchEndX - infoPanelTouchStartX;
+            const deltaY = touchEndY - infoPanelTouchStartY;
+
+            // Only trigger if horizontal swipe is dominant and significant
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+                if (deltaX > 0) {
+                    // Swipe right = previous
+                    navigateToBubble(-1);
+                } else {
+                    // Swipe left = next
+                    navigateToBubble(1);
+                }
+            }
+        }, { passive: true });
 
         animate();
     </script>
