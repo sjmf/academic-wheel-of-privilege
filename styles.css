@@ -804,11 +804,13 @@ body {
     #info-panel.mobile-flyout {
         top: inherit;
         right: 12px;
-        border-radius: 16px 16px 0px 0px
+        border-radius: 16px 16px 0px 0px;
+        pointer-events: auto;
     }
 
     #info-panel.visible {
         transform: translateY(0);
+        pointer-events: auto;
     }
 
     #info-panel h2 {
