@@ -136,6 +136,138 @@ function detectGrabBarTouch(touchEvent, grabBarId) {
     return touchEvent.touches[0].clientY <= rect.bottom;
 }
 
+/**
+ * Check if panel is at minimum height (within tolerance)
+ */
+function isAtMinHeight(panel, minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT()) {
+    return panel.offsetHeight <= minHeight + 10; // 10px tolerance
+}
+
+/**
+ * Check if panel is scrolled to bottom
+ */
+function isAtBottom(panel) {
+    return panel.scrollHeight - panel.scrollTop <= panel.clientHeight + 5;
+}
+
+/**
+ * Check if panel is scrolled to top
+ */
+function isAtTop(panel) {
+    return panel.scrollTop <= 0;
+}
+
+/**
+ * Dismiss a panel (remove visible state and reset height)
+ */
+function dismissPanel(panel, toggleElement = null) {
+    panel.classList.remove('visible');
+    panel.style.height = '';
+    if (toggleElement) {
+        toggleElement.classList.remove('active');
+    }
+}
+
+/**
+ * Handle vertical swipe on info panel (dismiss or expand)
+ */
+function handleInfoPanelVerticalSwipe(deltaY, panel) {
+    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+    
+    // Swipe down to dismiss (when at minimum height and scrolled to top)
+    if (deltaY > 0 && isAtMinHeight(panel, minHeight) && isAtTop(panel)) {
+        lockedBubble = null;
+        hideInfoPanel();
+        panel.classList.remove('expanded');
+        panel.style.height = '';
+        return;
+    }
+
+    // Swipe up to expand (when scrolled to bottom)
+    if (deltaY < 0 && isAtBottom(panel)) {
+        panel.classList.add('expanded');
+    }
+}
+
+/**
+ * Handle vertical swipe on default panel (dismiss)
+ */
+function handleDefaultPanelVerticalSwipe(deltaY, panel, toggleElement) {
+    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
+    
+    // Swipe down to dismiss (when at minimum height and scrolled to top)
+    if (deltaY > 0 && isAtMinHeight(panel, minHeight) && isAtTop(panel)) {
+        dismissPanel(panel, toggleElement);
+    }
+}
+
+/**
+ * Determine which ring a bubble should snap to based on distance
+ */
+function determineTargetRing(distance) {
+    if (distance > (ringRadii.inner + ringRadii.middle) / 2) {
+        if (distance > (ringRadii.middle + ringRadii.outer) / 2) {
+            return 'outer';
+        }
+        return 'middle';
+    }
+    return 'inner';
+}
+
+/**
+ * Handle bubble drag end: snap to ring and select if tapped
+ */
+function handleBubbleDragEnd(bubble, touch, startPosition) {
+    const dist = getDistanceFromOrigin(bubble.position.x, bubble.position.y);
+    const targetRing = determineTargetRing(dist);
+    
+    moveBubbleToRing(bubble, targetRing);
+    bubble.userData.targetScale = CFG.DEFAULT_SCALE;
+
+    // If it was a tap (not much movement), toggle selection
+    if (isTapGesture(startPosition.x, startPosition.y, touch.clientX, touch.clientY)) {
+        if (lockedBubble === bubble) {
+            lockedBubble = null;
+            hideInfoPanel();
+        } else {
+            lockedBubble = bubble;
+            updateInfoPanel(bubble);
+        }
+    }
+}
+
+/**
+ * Handle wheel rotation end: close panels and deselect on tap
+ */
+function handleWheelRotationEnd(touch, startPosition) {
+    if (!isTapGesture(startPosition.x, startPosition.y, touch.clientX, touch.clientY)) {
+        return;
+    }
+
+    // Close mobile panels if open
+    const mobilePanel = document.getElementById('default-panel');
+    const burger = document.getElementById('burger-menu');
+    if (mobilePanel.classList.contains('visible')) {
+        mobilePanel.classList.remove('visible');
+        burger.classList.remove('active');
+    }
+    hideInfoPanel();
+
+    // Check if tap was on a bubble to deselect
+    if (!lockedBubble) return;
+
+    const coords = getTouchScreenCoordinates(touch);
+    mouse.x = coords.x;
+    mouse.y = coords.y;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(bubbles);
+
+    if (intersects.length === 0) {
+        lockedBubble = null;
+        hideInfoPanel();
+    }
+}
+
 // ============================================================================
 // WHEEL TOUCH HANDLERS
 // ============================================================================
@@ -226,64 +358,12 @@ container.addEventListener('touchmove', (e) => {
 
 container.addEventListener('touchend', (e) => {
     if (wheelTouchState.isDraggingBubble && wheelTouchState.draggedBubble) {
-        // Snap bubble to nearest ring
-        const bubble = wheelTouchState.draggedBubble;
-        const dist = getDistanceFromOrigin(bubble.position.x, bubble.position.y);
-
-        let targetRing = 'inner';
-        if (dist > (ringRadii.inner + ringRadii.middle) / 2) {
-            if (dist > (ringRadii.middle + ringRadii.outer) / 2) {
-                targetRing = 'outer';
-            } else {
-                targetRing = 'middle';
-            }
-        }
-
-        moveBubbleToRing(bubble, targetRing);
-        bubble.userData.targetScale = CFG.DEFAULT_SCALE;
-
-        // If it was a tap (not much movement), select the bubble
         if (e.changedTouches.length > 0) {
-            const touch = e.changedTouches[0];
-            if (isTapGesture(wheelTouchState.startPosition.x, wheelTouchState.startPosition.y, touch.clientX, touch.clientY)) {
-                if (lockedBubble === bubble) {
-                    lockedBubble = null;
-                    hideInfoPanel();
-                } else {
-                    lockedBubble = bubble;
-                    updateInfoPanel(bubble);
-                }
-            }
+            handleBubbleDragEnd(wheelTouchState.draggedBubble, e.changedTouches[0], wheelTouchState.startPosition);
         }
-
         wheelTouchState.draggedBubble = null;
     } else if (wheelTouchState.isDragging && e.changedTouches.length > 0) {
-        // Check if it was a tap to deselect
-        const touch = e.changedTouches[0];
-        if (isTapGesture(wheelTouchState.startPosition.x, wheelTouchState.startPosition.y, touch.clientX, touch.clientY)) {
-            // Close mobile info panel if open
-            const mobilePanel = document.getElementById('default-panel');
-            const burger = document.getElementById('burger-menu');
-            if (mobilePanel.classList.contains('visible')) {
-                mobilePanel.classList.remove('visible');
-                burger.classList.remove('active');
-            }
-            hideInfoPanel();
-
-            // Check if tap was on a bubble to deselect
-            if (lockedBubble) {
-                const coords = getTouchScreenCoordinates(touch);
-                mouse.x = coords.x;
-                mouse.y = coords.y;
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(bubbles);
-
-                if (intersects.length === 0) {
-                    lockedBubble = null;
-                    hideInfoPanel();
-                }
-            }
-        }
+        handleWheelRotationEnd(e.changedTouches[0], wheelTouchState.startPosition);
     }
 
     wheelTouchState.isDragging = false;
@@ -344,27 +424,12 @@ infoPanel.addEventListener('touchend', (e) => {
 
     // Horizontal swipe for prev/next navigation
     if (swipe.isHorizontal) {
-        if (deltaX > 0) {
-            navigateToBubble(-1);
-        } else {
-            navigateToBubble(1);
-        }
+        navigateToBubble(deltaX > 0 ? -1 : 1);
     }
 
-    // Vertical swipe down to dismiss (when scrolled to top AND at minimum height)
-    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
-    const isAtMinHeight = infoPanel.offsetHeight <= minHeight + 10;
-    if (swipe.isVertical && deltaY > 0 && infoPanel.scrollTop <= 0 && isAtMinHeight) {
-        lockedBubble = null;
-        hideInfoPanel();
-        infoPanel.classList.remove('expanded');
-        infoPanel.style.height = '';
-    }
-
-    // Vertical swipe up to expand (when scrolled to bottom)
-    const isAtBottom = infoPanel.scrollHeight - infoPanel.scrollTop <= infoPanel.clientHeight + 5;
-    if (swipe.isVertical && deltaY < 0 && isAtBottom) {
-        infoPanel.classList.add('expanded');
+    // Vertical swipe handling
+    if (swipe.isVertical) {
+        handleInfoPanelVerticalSwipe(deltaY, infoPanel);
     }
 }, { passive: true });
 
@@ -389,13 +454,9 @@ defaultPanel.addEventListener('touchend', (e) => {
 
     const deltaY = e.changedTouches[0].clientY - defaultPanelTouchState.startY;
 
-    // Swipe down to dismiss (when scrolled to top AND at minimum height)
-    const minHeight = MOBILE_LAYOUT.MIN_PANEL_HEIGHT();
-    const isAtMinHeight = defaultPanel.offsetHeight <= minHeight + 10;
-    if (deltaY > TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE && defaultPanel.scrollTop <= 0 && isAtMinHeight) {
-        defaultPanel.classList.remove('visible');
-        burgerMenu.classList.remove('active');
-        defaultPanel.style.height = '';
+    // Only handle if swipe is significant
+    if (Math.abs(deltaY) > TOUCH_THRESHOLDS.SWIPE_MIN_DISTANCE) {
+        handleDefaultPanelVerticalSwipe(deltaY, defaultPanel, burgerMenu);
     }
 }, { passive: true });
 
