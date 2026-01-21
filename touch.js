@@ -90,18 +90,50 @@ function analyzeSwipeGesture(deltaX, deltaY, minDelta = TOUCH_THRESHOLDS.SWIPE_M
 }
 
 /**
- * Check if touch target is a grab bar or within grab bar area
+ * Convert touch coordinates to normalized screen coordinates (-1 to 1)
  */
-function isTouchOnGrabBar(element, grabBarElementId) {
-    const isElementGrabBar = element.closest('.grab-bar') !== null;
-    if (isElementGrabBar) return true;
+function getTouchScreenCoordinates(touch) {
+    return {
+        x: (touch.clientX / window.innerWidth) * 2 - 1,
+        y: -(touch.clientY / window.innerHeight) * 2 + 1
+    };
+}
+
+/**
+ * Get world position from screen coordinates via raycaster unprojection
+ */
+function getWorldPositionFromScreenCoords(screenX, screenY, camera, projectionZ = CFG.PROJECTION_Z) {
+    const vector = new THREE.Vector3(screenX, screenY, projectionZ);
+    vector.unproject(camera);
+    const dir = vector.sub(camera.position).normalize();
+    const distance = -camera.position.z / dir.z;
+    return camera.position.clone().add(dir.multiplyScalar(distance));
+}
+
+/**
+ * Calculate distance from origin
+ */
+function getDistanceFromOrigin(x, y) {
+    return Math.sqrt(x * x + y * y);
+}
+
+/**
+ * Detect if touch started on a grab bar element
+ */
+function detectGrabBarTouch(touchEvent, grabBarId) {
+    // Check if the target element or its ancestor is a grab bar
+    if (touchEvent.target.closest('.grab-bar') !== null) {
+        return true;
+    }
     
-    const grabBar = document.getElementById(grabBarElementId);
+    // Also check if touch is within the grab bar's Y bounds (for real mobile where event target may not be grab bar)
+    if (touchEvent.touches.length === 0) return false;
+    
+    const grabBar = document.getElementById(grabBarId);
     if (!grabBar) return false;
     
     const rect = grabBar.getBoundingClientRect();
-    // This will be populated from the touchstart event
-    return false; // Actual Y check done in the touch handler
+    return touchEvent.touches[0].clientY <= rect.bottom;
 }
 
 // ============================================================================
@@ -118,8 +150,9 @@ container.addEventListener('touchstart', (e) => {
     e.preventDefault();
 
     const touch = e.touches[0];
-    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    const coords = getTouchScreenCoordinates(touch);
+    mouse.x = coords.x;
+    mouse.y = coords.y;
 
     wheelTouchState.startPosition = { x: touch.clientX, y: touch.clientY };
 
@@ -136,14 +169,13 @@ container.addEventListener('touchstart', (e) => {
             wheelTouchState.draggedBubble = intersects[0].object;
             wheelTouchState.draggedBubble.userData.targetScale = CFG.DRAG_SCALE;
 
-            // Calculate offset
-            const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
-            vector.unproject(camera);
-            const dir = vector.sub(camera.position).normalize();
-            const distance = -camera.position.z / dir.z;
-            const clickPos = camera.position.clone().add(dir.multiplyScalar(distance));
-            const clickRadius = Math.sqrt(clickPos.x * clickPos.x + clickPos.y * clickPos.y);
-            const bubbleRadius = Math.sqrt(wheelTouchState.draggedBubble.position.x * wheelTouchState.draggedBubble.position.x + wheelTouchState.draggedBubble.position.y * wheelTouchState.draggedBubble.position.y);
+            // Calculate offset between click point and bubble center
+            const clickPos = getWorldPositionFromScreenCoords(mouse.x, mouse.y, camera);
+            const clickRadius = getDistanceFromOrigin(clickPos.x, clickPos.y);
+            const bubbleRadius = getDistanceFromOrigin(
+                wheelTouchState.draggedBubble.position.x,
+                wheelTouchState.draggedBubble.position.y
+            );
             wheelTouchState.dragRadiusOffset = bubbleRadius - clickRadius;
         } else {
             wheelTouchState.isDragging = true;
@@ -166,18 +198,14 @@ container.addEventListener('touchmove', (e) => {
         wheelTouchState.startDistance = newDistance;
     } else if (e.touches.length === 1) {
         const touch = e.touches[0];
-        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+        const coords = getTouchScreenCoordinates(touch);
+        mouse.x = coords.x;
+        mouse.y = coords.y;
 
         if (wheelTouchState.isDraggingBubble && wheelTouchState.draggedBubble) {
             // Drag bubble between rings
-            const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
-            vector.unproject(camera);
-            const dir = vector.sub(camera.position).normalize();
-            const distance = -camera.position.z / dir.z;
-            const pos = camera.position.clone().add(dir.multiplyScalar(distance));
-
-            const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + wheelTouchState.dragRadiusOffset;
+            const pos = getWorldPositionFromScreenCoords(mouse.x, mouse.y, camera);
+            const currentDist = getDistanceFromOrigin(pos.x, pos.y) + wheelTouchState.dragRadiusOffset;
             const clampedDist = Math.max(ringRadii.inner - CFG.RING_PADDING, Math.min(ringRadii.outer + CFG.RING_PADDING, currentDist));
             const angle = wheelTouchState.draggedBubble.userData.angle;
 
@@ -199,8 +227,8 @@ container.addEventListener('touchmove', (e) => {
 container.addEventListener('touchend', (e) => {
     if (wheelTouchState.isDraggingBubble && wheelTouchState.draggedBubble) {
         // Snap bubble to nearest ring
-        const pos = wheelTouchState.draggedBubble.position;
-        const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+        const bubble = wheelTouchState.draggedBubble;
+        const dist = getDistanceFromOrigin(bubble.position.x, bubble.position.y);
 
         let targetRing = 'inner';
         if (dist > (ringRadii.inner + ringRadii.middle) / 2) {
@@ -211,20 +239,19 @@ container.addEventListener('touchend', (e) => {
             }
         }
 
-        moveBubbleToRing(wheelTouchState.draggedBubble, targetRing);
-        wheelTouchState.draggedBubble.userData.targetScale = CFG.DEFAULT_SCALE;
+        moveBubbleToRing(bubble, targetRing);
+        bubble.userData.targetScale = CFG.DEFAULT_SCALE;
 
         // If it was a tap (not much movement), select the bubble
         if (e.changedTouches.length > 0) {
             const touch = e.changedTouches[0];
             if (isTapGesture(wheelTouchState.startPosition.x, wheelTouchState.startPosition.y, touch.clientX, touch.clientY)) {
-                // It was a tap
-                if (lockedBubble === wheelTouchState.draggedBubble) {
+                if (lockedBubble === bubble) {
                     lockedBubble = null;
                     hideInfoPanel();
                 } else {
-                    lockedBubble = wheelTouchState.draggedBubble;
-                    updateInfoPanel(wheelTouchState.draggedBubble);
+                    lockedBubble = bubble;
+                    updateInfoPanel(bubble);
                 }
             }
         }
@@ -245,8 +272,9 @@ container.addEventListener('touchend', (e) => {
 
             // Check if tap was on a bubble to deselect
             if (lockedBubble) {
-                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                const coords = getTouchScreenCoordinates(touch);
+                mouse.x = coords.x;
+                mouse.y = coords.y;
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(bubbles);
 
@@ -297,12 +325,7 @@ infoPanel.addEventListener('touchstart', (e) => {
     if (e.touches.length === 0) return;
     infoPanelTouchState.startX = e.touches[0].clientX;
     infoPanelTouchState.startY = e.touches[0].clientY;
-    
-    // Check if touch started on grab bar
-    const grabBar = document.getElementById('info-panel-grab-bar');
-    infoPanelTouchState.startedOnGrabBar = 
-        e.target.closest('.grab-bar') !== null ||
-        (grabBar && e.touches[0].clientY <= grabBar.getBoundingClientRect().bottom);
+    infoPanelTouchState.startedOnGrabBar = detectGrabBarTouch(e, 'info-panel-grab-bar');
 }, { passive: true });
 
 infoPanel.addEventListener('touchend', (e) => {
@@ -350,8 +373,9 @@ infoPanel.addEventListener('touchend', (e) => {
 // ============================================================================
 
 defaultPanel.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 0) return;
     defaultPanelTouchState.startY = e.touches[0].clientY;
-    defaultPanelTouchState.startedOnGrabBar = e.target.closest('.grab-bar') !== null;
+    defaultPanelTouchState.startedOnGrabBar = detectGrabBarTouch(e, 'mobile-panel-grab-bar');
 }, { passive: true });
 
 defaultPanel.addEventListener('touchend', (e) => {
