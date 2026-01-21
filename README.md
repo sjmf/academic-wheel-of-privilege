@@ -4,7 +4,7 @@ An interactive 3D visualisation exploring how 20 identity characteristics across
 
 **[Try it live →](https://sjmf.github.io/academic-wheel-of-privilege/)**
 
-![Academic Wheel of Privilege](https://img.shields.io/badge/Three.js-r128-blue) ![License](https://img.shields.io/badge/license-CC--BY--4.0-green)
+![Academic Wheel of Privilege](https://img.shields.io/badge/Three.js-r128-blue) ![License](https://img.shields.io/badge/license-CC--BY--NC--4.0-green)
 
 ## About
 
