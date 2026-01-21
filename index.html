@@ -996,8 +996,8 @@
         const CFG = {
             // Animation
             LERP: 0.1,
-            FLOAT_SPEED: 0.001,
-            FLOAT_AMPLITUDE: 0.1,
+            FLOAT_SPEED: 0.0004,
+            FLOAT_AMPLITUDE: 0.05,
 
             // Scales
             DEFAULT_SCALE: 1,
@@ -2093,7 +2093,7 @@
                         y: touch.clientY - touchStartPosition.y
                     };
                     rotationVelocity.x = deltaMove.y * CFG.TOUCH_ROTATION_SENSITIVITY;
-                    rotationVelocity.y = deltaMove.x * CFG.TOUCH_ROTATION_SENSITIVITY;
+                    rotationVelocity.y = -deltaMove.x * CFG.TOUCH_ROTATION_SENSITIVITY;
                     touchStartPosition = { x: touch.clientX, y: touch.clientY };
                 }
             }
