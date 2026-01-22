@@ -553,7 +553,8 @@ function updateStatusLabel(bubble, text) {
 // BUBBLE MOVEMENT & INFO PANEL
 // ============================================================================
 
-function moveBubbleToRing(bubble, ringName) {
+// Core bubble movement logic (no persistence side effects)
+function moveBubbleToRingCore(bubble, ringName) {
     const radius = ringRadii[ringName];
     const angle = bubble.userData.angle;
     bubble.userData.currentRing = ringName;
@@ -572,6 +573,13 @@ function moveBubbleToRing(bubble, ringName) {
     if (lockedBubble === bubble) {
         updateInfoPanel(bubble);
     }
+}
+
+// Public API: moves bubble and persists state
+function moveBubbleToRing(bubble, ringName) {
+    moveBubbleToRingCore(bubble, ringName);
+    saveSelections();
+    updateUrlHash();
 }
 
 // Update basic bubble info in panel (title, category, description)
@@ -925,7 +933,7 @@ function loadSelections() {
             bubbles.forEach(b => {
                 const ring = selections[b.userData.name];
                 if (ring && ['inner', 'middle', 'outer'].includes(ring)) {
-                    moveBubbleToRing(b, ring);
+                    moveBubbleToRingCore(b, ring);
                 }
             });
         }
@@ -983,9 +991,9 @@ function loadFromUrlHash() {
     if (!isValidHash(bubbleHash, charToRing, bubbles.length)) return false;
     if (!isValidHash(categoryHash, { i: true, o: true }, categoryOrder.length)) return false;
 
-    // Apply bubble selections
+    // Apply bubble selections (use core to avoid recursive persistence)
     bubbles.forEach((b, i) => {
-        originalMoveBubbleToRing(b, charToRing[bubbleHash[i]]);
+        moveBubbleToRingCore(b, charToRing[bubbleHash[i]]);
     });
 
     // Apply category selections
@@ -995,14 +1003,6 @@ function loadFromUrlHash() {
 
     return true;
 }
-
-// Wrap moveBubbleToRing to save after each change
-const originalMoveBubbleToRing = moveBubbleToRing;
-moveBubbleToRing = function(bubble, ringName) {
-    originalMoveBubbleToRing(bubble, ringName);
-    saveSelections();
-    updateUrlHash();
-};
 
 // ============================================================================
 // INITIALISATION
