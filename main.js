@@ -936,99 +936,64 @@ function loadSelections() {
 
 // URL hash encoding for shareable links
 const ringToChar = { inner: 'i', middle: 'm', outer: 'o' };
-const charToRing = { 'i': 'inner', 'm': 'middle', 'o': 'outer' };
-const stateToChar = { active: 'i', inactive: 'o' };
-const charToState = { 'i': 'active', 'o': 'inactive' };
+const charToRing = { i: 'inner', m: 'middle', o: 'outer' };
 
+// Validate a hash string against allowed characters and expected length
+function isValidHash(hash, charMap, expectedLength) {
+    return hash.length === expectedLength && [...hash].every(c => c in charMap);
+}
+
+// Build hash string from current state
 function getSelectionsHash() {
-    // Create bubble hash: one char per bubble in order
     const bubbleHash = bubbles.map(b => ringToChar[b.userData.currentRing]).join('');
-    
-    // Create category hash: one char per category in order
-    const categoryOrder = Object.keys(categories);
-    const categoryHash = categoryOrder.map(catName => {
-        const btn = categoryButtons[catName];
-        const isActive = btn.classList.contains('active');
-        return isActive ? 'i' : 'o';
-    }).join('');
-    
-    // Return combined hash with separator: bubbles/categories
-    return bubbleHash + '/' + categoryHash;
+    const categoryHash = Object.keys(categories).map(catName =>
+        categoryButtons[catName].classList.contains('active') ? 'i' : 'o'
+    ).join('');
+    return `${bubbleHash}/${categoryHash}`;
 }
 
 function updateUrlHash() {
-    const hash = getSelectionsHash();
-    history.replaceState(null, '', '#' + hash);
+    history.replaceState(null, '', '#' + getSelectionsHash());
+}
+
+// Apply category active state (shared by hash loading and button clicks)
+function setCategoryActive(catName, isActive) {
+    const btn = categoryButtons[catName];
+    btn.classList.toggle('active', isActive);
+    bubbles.forEach(bubble => {
+        if (bubble.userData.category === catName) {
+            bubble.userData.isDeselected = !isActive;
+            bubble.userData.targetOpacity = isActive ? CFG.ACTIVE_OPACITY : CFG.DESELECTED_OPACITY;
+            bubble.userData.targetScale = isActive ? CFG.DEFAULT_SCALE : CFG.DESELECTED_SCALE;
+        }
+    });
 }
 
 function loadFromUrlHash() {
-    const hash = window.location.hash.slice(1); // Remove '#'
+    const hash = window.location.hash.slice(1);
     if (!hash) return false;
-    
+
     const parts = hash.split('/');
-    if (parts.length !== 2) return false; // Must have both bubble and category parts
-    
+    if (parts.length !== 2) return false;
+
     const [bubbleHash, categoryHash] = parts;
-    
-    // Validate and load bubble selections
-    if (bubbleHash.length === bubbles.length) {
-        let valid = true;
-        for (let i = 0; i < bubbleHash.length; i++) {
-            if (!charToRing[bubbleHash[i]]) {
-                valid = false;
-                break;
-            }
-        }
-        if (valid) {
-            bubbles.forEach((b, i) => {
-                const ring = charToRing[bubbleHash[i]];
-                if (ring) {
-                    // Use original to avoid recursive hash updates
-                    originalMoveBubbleToRing(b, ring);
-                }
-            });
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    }
-    
-    // Validate and load category selections
     const categoryOrder = Object.keys(categories);
-    if (categoryHash.length === categoryOrder.length) {
-        let valid = true;
-        for (let i = 0; i < categoryHash.length; i++) {
-            if (!charToState[categoryHash[i]]) {
-                valid = false;
-                break;
-            }
-        }
-        if (valid) {
-            categoryOrder.forEach((catName, i) => {
-                const btn = categoryButtons[catName];
-                const shouldBeActive = charToState[categoryHash[i]] === 'active';
-                const isCurrentlyActive = btn.classList.contains('active');
-                
-                // Toggle if state differs from current
-                if (shouldBeActive !== isCurrentlyActive) {
-                    btn.classList.toggle('active');
-                    const isActive = btn.classList.contains('active');
-                    
-                    // Update all bubbles in this category
-                    bubbles.forEach(bubble => {
-                        if (bubble.userData.category === catName) {
-                            bubble.userData.isDeselected = !isActive;
-                            bubble.userData.targetOpacity = isActive ? CFG.ACTIVE_OPACITY : CFG.DESELECTED_OPACITY;
-                            bubble.userData.targetScale = isActive ? CFG.DEFAULT_SCALE : CFG.DESELECTED_SCALE;
-                        }
-                    });
-                }
-            });
-            return true; // Successfully loaded from hash
-        }
-    }
-    return false; // No valid hash
+
+    // Validate both hashes before applying any changes
+    if (!isValidHash(bubbleHash, charToRing, bubbles.length)) return false;
+    if (!isValidHash(categoryHash, { i: true, o: true }, categoryOrder.length)) return false;
+
+    // Apply bubble selections
+    bubbles.forEach((b, i) => {
+        originalMoveBubbleToRing(b, charToRing[bubbleHash[i]]);
+    });
+
+    // Apply category selections
+    categoryOrder.forEach((catName, i) => {
+        setCategoryActive(catName, categoryHash[i] === 'i');
+    });
+
+    return true;
 }
 
 // Wrap moveBubbleToRing to save after each change
