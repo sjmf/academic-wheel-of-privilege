@@ -91,6 +91,35 @@ function getCategoryColor(categoryName) {
     return (categories[categoryName] && categories[categoryName].color) || '#999999';
 }
 
+// ============================================================================
+// VECTOR MATH UTILITIES
+// ============================================================================
+
+// Convert normalized mouse coordinates to world position on XY plane (z=0)
+function mouseToWorldPosition(mouseX, mouseY) {
+    const vector = new THREE.Vector3(mouseX, mouseY, CFG.PROJECTION_Z);
+    vector.unproject(camera);
+    const dir = vector.sub(camera.position).normalize();
+    const distance = -camera.position.z / dir.z;
+    return camera.position.clone().add(dir.multiplyScalar(distance));
+}
+
+// Calculate distance from center (radius) for a position
+function distanceFromCenter(pos) {
+    return Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+}
+
+// Determine which ring a position should snap to based on distance from center
+function determineTargetRing(distance) {
+    if (distance > (ringRadii.inner + ringRadii.middle) / 2) {
+        if (distance > (ringRadii.middle + ringRadii.outer) / 2) {
+            return 'outer';
+        }
+        return 'middle';
+    }
+    return 'inner';
+}
+
 // Set initial rotation
 scene.rotation.x = CFG.INIT_ROT_X;
 
@@ -402,9 +431,10 @@ pointLight2.position.set(CFG.LIGHTS.POINT2.position.x, CFG.LIGHTS.POINT2.positio
 scene.add(pointLight2);
 
 // ============================================================================
-// SCORE & COLOR UTILITIES
+// COLOR UTILITIES
 // ============================================================================
 
+// Convert hex color string to RGB object
 function hexToRgb(hex) {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
@@ -412,6 +442,23 @@ function hexToRgb(hex) {
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
     } : null;
+}
+
+// Convert RGB values to hex color string
+function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => {
+        const hex = Math.round(x).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+}
+
+// Linearly interpolate between two RGB colors
+function lerpRgb(rgb1, rgb2, t) {
+    return {
+        r: rgb1.r + (rgb2.r - rgb1.r) * t,
+        g: rgb1.g + (rgb2.g - rgb1.g) * t,
+        b: rgb1.b + (rgb2.b - rgb1.b) * t
+    };
 }
 
 // Read CSS score color variables and return parsed RGB objects.
@@ -422,38 +469,29 @@ function getScoreRGBs() {
     const colorMid = getComputedStyle(root).getPropertyValue('--color-score-mid').trim();
     const colorMax = getComputedStyle(root).getPropertyValue('--color-score-max').trim();
 
-    const minRgb = hexToRgb(colorMin) || { r: 239, g: 68, b: 68 };
-    const midRgb = hexToRgb(colorMid) || { r: 234, g: 179, b: 8 };
-    const maxRgb = hexToRgb(colorMax) || { r: 34, g: 197, b: 94 };
-
-    return { minRgb, midRgb, maxRgb };
-}
-
-function rgbToHex(r, g, b) {
-    return '#' + [r, g, b].map(x => {
-        const hex = Math.round(x).toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-    }).join('');
+    return {
+        minRgb: hexToRgb(colorMin) || { r: 239, g: 68, b: 68 },
+        midRgb: hexToRgb(colorMid) || { r: 234, g: 179, b: 8 },
+        maxRgb: hexToRgb(colorMax) || { r: 34, g: 197, b: 94 }
+    };
 }
 
 // Return a hex color for a normalized score (0..1) using CSS variables
 function getScoreColor(normalizedScore) {
-    const { minRgb: rgb1, midRgb: rgb2, maxRgb: rgb3 } = getScoreRGBs();
+    const { minRgb, midRgb, maxRgb } = getScoreRGBs();
 
     if (normalizedScore <= 0.5) {
-        const t = normalizedScore * 2;
-        const r = rgb1.r + (rgb2.r - rgb1.r) * t;
-        const g = rgb1.g + (rgb2.g - rgb1.g) * t;
-        const b = rgb1.b + (rgb2.b - rgb1.b) * t;
-        return rgbToHex(r, g, b);
+        const rgb = lerpRgb(minRgb, midRgb, normalizedScore * 2);
+        return rgbToHex(rgb.r, rgb.g, rgb.b);
     } else {
-        const t = (normalizedScore - 0.5) * 2;
-        const r = rgb2.r + (rgb3.r - rgb2.r) * t;
-        const g = rgb2.g + (rgb3.g - rgb2.g) * t;
-        const b = rgb2.b + (rgb3.b - rgb2.b) * t;
-        return rgbToHex(r, g, b);
+        const rgb = lerpRgb(midRgb, maxRgb, (normalizedScore - 0.5) * 2);
+        return rgbToHex(rgb.r, rgb.g, rgb.b);
     }
 }
+
+// ============================================================================
+// SCORE CALCULATION
+// ============================================================================
 
 // Calculate and update score
 function updateScore() {
@@ -536,20 +574,26 @@ function moveBubbleToRing(bubble, ringName) {
     }
 }
 
-// Update info panel
-function updateInfoPanel(bubble) {
-    const data = bubble.userData;
-
+// Update basic bubble info in panel (title, category, description)
+function updatePanelBasicInfo(data) {
     DOM.panelTitle.textContent = data.name;
     DOM.panelCategory.textContent = data.category;
     DOM.panelCategory.style.backgroundColor = getCategoryColor(data.category);
     DOM.panelDescription.textContent = data.description;
+}
 
-    DOM.panelUkLaw.className = `uk-law ${data.ukLaw.status}`;
+// Update UK law section in panel
+function updatePanelUkLaw(ukLaw) {
     const icons = { 'protected': '✓', 'partial': '◐', 'not-protected': '✗' };
-    DOM.ukLawIcon.textContent = icons[data.ukLaw.status];
-    DOM.ukLawTitle.textContent = data.ukLaw.title;
-    DOM.ukLawText.textContent = data.ukLaw.text;
+    DOM.panelUkLaw.className = `uk-law ${ukLaw.status}`;
+    DOM.ukLawIcon.textContent = icons[ukLaw.status];
+    DOM.ukLawTitle.textContent = ukLaw.title;
+    DOM.ukLawText.textContent = ukLaw.text;
+}
+
+// Render spectrum items and attach click handlers
+function updatePanelSpectrum(bubble) {
+    const data = bubble.userData;
 
     DOM.spectrumItems.innerHTML = `
         <div class="spectrum-item outer ${data.currentRing === 'outer' ? 'selected' : ''}" data-ring="outer">
@@ -574,14 +618,17 @@ function updateInfoPanel(bubble) {
             moveBubbleToRing(bubble, ring);
         });
     });
+}
 
-    // Update navigation counter
+// Update navigation counter display
+function updatePanelNavigation(bubble) {
     const currentIndex = bubbles.indexOf(bubble);
     DOM.navCounter.textContent = `${currentIndex + 1} / ${bubbles.length}`;
+}
 
+// Show info panel and adjust UI state
+function showInfoPanelUI() {
     DOM.infoPanel.classList.add('visible');
-
-    // Hide default panel when showing bubble info
     DOM.defaultPanel.classList.add('hidden');
     DOM.defaultPanel.classList.remove('visible');
     DOM.burgerMenu.classList.remove('active');
@@ -590,6 +637,16 @@ function updateInfoPanel(bubble) {
     if (window.innerWidth <= 768) {
         scene.position.y = CFG.MOBILE_PANEL_OFFSET_Y;
     }
+}
+
+// Update info panel (orchestrates all panel updates)
+function updateInfoPanel(bubble) {
+    const data = bubble.userData;
+    updatePanelBasicInfo(data);
+    updatePanelUkLaw(data.ukLaw);
+    updatePanelSpectrum(bubble);
+    updatePanelNavigation(bubble);
+    showInfoPanelUI();
 }
 
 function hideInfoPanel() {
@@ -645,13 +702,9 @@ container.addEventListener('mousedown', (e) => {
         dragState.draggedBubble.userData.targetScale = CFG.DRAG_SCALE;
 
         // Calculate offset: difference between click position radius and bubble radius
-        const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
-        vector.unproject(camera);
-        const dir = vector.sub(camera.position).normalize();
-        const distance = -camera.position.z / dir.z;
-        const clickPos = camera.position.clone().add(dir.multiplyScalar(distance));
-        const clickRadius = Math.sqrt(clickPos.x * clickPos.x + clickPos.y * clickPos.y);
-        const bubbleRadius = Math.sqrt(dragState.draggedBubble.position.x * dragState.draggedBubble.position.x + dragState.draggedBubble.position.y * dragState.draggedBubble.position.y);
+        const clickPos = mouseToWorldPosition(mouse.x, mouse.y);
+        const clickRadius = distanceFromCenter(clickPos);
+        const bubbleRadius = distanceFromCenter(dragState.draggedBubble.position);
         dragState.radiusOffset = bubbleRadius - clickRadius;
     } else {
         dragState.isDragging = true;
@@ -661,17 +714,8 @@ container.addEventListener('mousedown', (e) => {
 container.addEventListener('mouseup', (e) => {
     if (dragState.isDraggingBubble && dragState.draggedBubble) {
         // Determine which ring to snap to based on distance from center
-        const pos = dragState.draggedBubble.position;
-        const dist = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
-
-        let targetRing = 'inner';
-        if (dist > (ringRadii.inner + ringRadii.middle) / 2) {
-            if (dist > (ringRadii.middle + ringRadii.outer) / 2) {
-                targetRing = 'outer';
-            } else {
-                targetRing = 'middle';
-            }
-        }
+        const dist = distanceFromCenter(dragState.draggedBubble.position);
+        const targetRing = determineTargetRing(dist);
 
         moveBubbleToRing(dragState.draggedBubble, targetRing);
         dragState.draggedBubble.userData.targetScale = 1;
@@ -687,15 +731,11 @@ container.addEventListener('mousemove', (e) => {
 
     if (dragState.isDraggingBubble && dragState.draggedBubble) {
         // Convert mouse to 3D position on XY plane
-        const vector = new THREE.Vector3(mouse.x, mouse.y, CFG.PROJECTION_Z);
-        vector.unproject(camera);
-        const dir = vector.sub(camera.position).normalize();
-        const distance = -camera.position.z / dir.z;
-        const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+        const pos = mouseToWorldPosition(mouse.x, mouse.y);
 
         // Keep bubble at its angle, just change radius
         // Apply offset so bubble doesn't jump to cursor
-        const currentDist = Math.sqrt(pos.x * pos.x + pos.y * pos.y) + dragState.radiusOffset;
+        const currentDist = distanceFromCenter(pos) + dragState.radiusOffset;
         const clampedDist = Math.max(ringRadii.inner - CFG.RING_PADDING, Math.min(ringRadii.outer + CFG.RING_PADDING, currentDist));
         const angle = dragState.draggedBubble.userData.angle;
 
