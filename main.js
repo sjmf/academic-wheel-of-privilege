@@ -599,32 +599,20 @@ function updatePanelUkLaw(ukLaw) {
     DOM.ukLawText.textContent = ukLaw.text;
 }
 
-// Render spectrum items and attach click handlers
+// Update spectrum items in panel (updates existing DOM elements)
 function updatePanelSpectrum(bubble) {
     const data = bubble.userData;
+    const rings = ['outer', 'middle', 'inner'];
 
-    DOM.spectrumItems.innerHTML = `
-        <div class="spectrum-item outer ${data.currentRing === 'outer' ? 'selected' : ''}" data-ring="outer">
-            <div style="font-weight: 600; margin-bottom: 4px;">1 point</div>
-            ${data.spectrum.outer}
-        </div>
-        <div class="spectrum-item middle ${data.currentRing === 'middle' ? 'selected' : ''}" data-ring="middle">
-            <div style="font-weight: 600; margin-bottom: 4px;">2 points</div>
-            ${data.spectrum.middle}
-        </div>
-        <div class="spectrum-item inner ${data.currentRing === 'inner' ? 'selected' : ''}" data-ring="inner">
-            <div style="font-weight: 600; margin-bottom: 4px;">3 points</div>
-            ${data.spectrum.inner}
-        </div>
-    `;
+    rings.forEach(ring => {
+        const item = DOM.spectrumItems.querySelector(`[data-ring="${ring}"]`);
+        if (!item) return;
 
-    // Add click handlers to spectrum items
-    DOM.spectrumItems.querySelectorAll('.spectrum-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const ring = item.dataset.ring;
-            moveBubbleToRing(bubble, ring);
-        });
+        // Update text content
+        item.querySelector('.spectrum-text').textContent = data.spectrum[ring];
+
+        // Update selected state
+        item.classList.toggle('selected', data.currentRing === ring);
     });
 }
 
@@ -1007,6 +995,16 @@ function loadFromUrlHash() {
 // ============================================================================
 // INITIALISATION
 // ============================================================================
+
+// Attach spectrum item click handlers (once, not on every panel update)
+DOM.spectrumItems.querySelectorAll('.spectrum-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (lockedBubble) {
+            moveBubbleToRing(lockedBubble, item.dataset.ring);
+        }
+    });
+});
 
 // URL hash takes priority over localStorage
 if (!loadFromUrlHash()) {
