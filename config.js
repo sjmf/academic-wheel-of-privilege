@@ -37,8 +37,11 @@ const CFG = {
     CAMERA_Z_MAX: 30,
 
     // Visuals
+    RING_OPACITY: 0.5,
     GLOW_OPACITY: 0.2,
     GLOW_HIGHLIGHT_OPACITY: 0.4,
+    BUBBLE_SHININESS: 100,
+    BUBBLE_EMISSIVE_INTENSITY: 0.15,
 
     // Geometry and interaction defaults
     RING_TUBE: 0.05,
@@ -60,6 +63,7 @@ const CFG = {
     CAMERA_FOV: 60,
     CAMERA_NEAR: 0.1,
     CAMERA_FAR: 1000,
+    CAMERA_ZOOM_FACTOR: 0.9,  // Initial zoom multiplier
     INIT_ROT_X: Math.PI - Math.PI / 8,
 
     // Auto-rotation thresholds
@@ -85,5 +89,21 @@ const CFG = {
     MOBILE_LAYOUT: {
         CATEGORY_BAR_HEIGHT: 68,
         GRAB_BAR_TOUCH_TOLERANCE: 10
-    }
+    },
+
+    // Lighting
+    LIGHTS: {
+        AMBIENT: { color: 0xffffff, intensity: 0.6 },
+        POINT1: { color: 0xffffff, intensity: 0.8, distance: 100, position: { x: 10, y: 10, z: 15 } },
+        POINT2: { color: 0x60a5fa, intensity: 0.4, distance: 100, position: { x: -10, y: -10, z: 10 } }
+    },
+
+    // Label rendering
+    LABEL_TEXT_PADDING: 20,
+    LABEL_SHADOW_OFFSET: 1,
+    LABEL_SHADOW_COLOR: 'rgba(0,0,0,0.8)',
+    SPRITE_RENDER_ORDER: 999,
+
+    // UI offsets
+    TOOLTIP_OFFSET: 10
 };
