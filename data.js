@@ -31,7 +31,7 @@ const identityData = {
         ukLaw: {
             status: "partial",
             title: "Partial Protection",
-            text: "While nationality is a protected characteristic, immigration status itself is not directly protected. However, indirect discrimination based on nationality may be unlawful."
+            text: "While nationality can be related to the protected characteristic of race, immigration status itself is not directly protected. However, indirect discrimination based on nationality may be unlawful."
         }
     },
     "Language": {
